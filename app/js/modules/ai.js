@@ -112,10 +112,12 @@ Relação insulina:carboidrato: 1 UI para cada ${s.carbRatio}g de carbo
   → Para cobrir Xg de carbo: X ÷ ${s.carbRatio} = dose de refeição
 Alvo de correção: ${s.correctionTarget} mg/dL
 
-FÓRMULAS ATIVAS:
-  Dose de correção = (Glicose atual − ${s.correctionTarget}) ÷ ${s.insulinSensitivity}
+FÓRMULA DE CORREÇÃO DO PACIENTE:
+  Dose de correção = (Glicose atual − 100) ÷ 40
   Dose de refeição = Carboidratos ÷ ${s.carbRatio}
   Dose total = Correção (mín. 0) + Refeição
+
+EXEMPLO: glicose 180 → (180 − 100) ÷ 40 = 2 UI de correção
 
 ═══════════════════════════════════════
 GLICOSE

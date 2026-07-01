@@ -249,7 +249,7 @@ function renderParamsModal(s) {
               Fator de sensibilidade (mg/dL por UI)
             </label>
             <input class="form-input" id="ins-p-sensitivity" type="number" inputmode="decimal"
-              min="1" max="500" placeholder="Ex: 50" value="${s.insulinSensitivity}" required />
+              min="1" max="500" placeholder="Ex: 40" value="${s.insulinSensitivity}" required />
             <span class="form-hint">Quanto 1 unidade de insulina reduz sua glicose</span>
             <span class="form-error">Informe um valor entre 1 e 500</span>
           </div>
@@ -267,7 +267,7 @@ function renderParamsModal(s) {
               Glicose alvo (mg/dL)
             </label>
             <input class="form-input" id="ins-p-target" type="number" inputmode="numeric"
-              min="60" max="300" placeholder="Ex: 120" value="${s.correctionTarget}" required />
+              min="60" max="300" placeholder="Ex: 100" value="${s.correctionTarget}" required />
             <span class="form-hint">Valor de glicose que você quer atingir com a correção</span>
             <span class="form-error">Informe um valor entre 60 e 300</span>
           </div>

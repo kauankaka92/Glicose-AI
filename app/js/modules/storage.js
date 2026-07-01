@@ -54,9 +54,9 @@ function getSettings() {
     targetMin: 70,
     targetMax: 180,
     unit: 'mg/dL',
-    insulinSensitivity: 50,
+    insulinSensitivity: 40,
     carbRatio: 10,
-    correctionTarget: 120,
+    correctionTarget: 100,
     name: '',
     notifications: true
   };
