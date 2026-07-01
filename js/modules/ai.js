@@ -2,7 +2,7 @@ import { getList, getSettings, KEYS } from './storage.js';
 import { getGlucoseStatus, formatDateTime, formatDate, formatTime, isSameDay, showToast } from './utils.js';
 
 const API_URL = '/api/chat';
-const MODEL = 'openai/gpt-4o-mini';
+const MODEL = 'meta/llama-3.1-8b-instruct';
 
 let messages = [];
 let isLoading = false;

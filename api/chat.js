@@ -1,5 +1,3 @@
-export const config = { runtime: 'edge' };
-
 const NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
 
 const CORS = {
@@ -8,25 +6,19 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type'
 };
 
-export default async function handler(req) {
+export default async function handler(req, res) {
+  // CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: CORS });
+    return res.status(204).set(CORS).end();
   }
 
   if (req.method !== 'POST') {
-    return json({ error: 'Method not allowed' }, 405);
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const apiKey = process.env.NVIDIA_NIM_API_KEY;
   if (!apiKey) {
-    return json({ error: 'NVIDIA_NIM_API_KEY not set in Vercel Environment Variables' }, 500);
-  }
-
-  let body;
-  try {
-    body = await req.json();
-  } catch {
-    return json({ error: 'Invalid JSON body' }, 400);
+    return res.status(500).json({ error: 'NVIDIA_NIM_API_KEY not configured in Vercel Environment Variables' });
   }
 
   try {
@@ -36,19 +28,14 @@ export default async function handler(req) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(req.body)
     });
 
     const data = await upstream.json();
-    return json(data, upstream.status);
-  } catch (err) {
-    return json({ error: err.message }, 502);
-  }
-}
 
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...CORS, 'Content-Type': 'application/json' }
-  });
+    Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
+    return res.status(upstream.status).json(data);
+  } catch (err) {
+    return res.status(502).json({ error: err.message });
+  }
 }

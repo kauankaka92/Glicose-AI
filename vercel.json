@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/chat.js": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     { "source": "/((?!api|css|js|pages|icons|sw.js|manifest.json|favicon.ico).*)", "destination": "/index.html" }
   ],
