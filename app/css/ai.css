@@ -11,6 +11,14 @@
   display: flex;
 }
 
+/* Top bar */
+.ai-topbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 12px 0;
+  flex-shrink: 0;
+}
+
 /* Messages area */
 .ai-messages {
   flex: 1;
