@@ -1,5 +1,6 @@
-import { KEYS, getList, getSettings, addItem, updateItem, deleteItem } from './storage.js';
-import { getGlucoseStatus, formatDate, formatTime, isSameDay, nowISO, generateId, debounce, showToast } from './utils.js';
+import { KEYS, getList, getSettings } from './storage.js';
+import { createGlucoseEntry, updateGlucoseEntry, deleteGlucoseEntry } from './api.js';
+import { getGlucoseStatus, formatDate, formatTime, isSameDay, nowISO, debounce, showToast } from './utils.js';
 
 const PERIODS = ['Todos', 'Jejum', 'Pré-almoço', 'Pós-almoço', 'Tarde', 'Jantar', 'Madrugada'];
 const SORT_OPTIONS = { newest: 'Mais recentes', oldest: 'Mais antigas', highest: 'Maior valor', lowest: 'Menor valor' };
@@ -277,7 +278,7 @@ function openConfirm(id, value) {
     if (e.target === e.currentTarget) closeConfirm();
   });
   document.getElementById('glc-confirm-ok').addEventListener('click', e => {
-    deleteItem(KEYS.GLUCOSE, e.currentTarget.dataset.id);
+    deleteGlucoseEntry(e.currentTarget.dataset.id);
     closeConfirm();
     showToast('Registro excluído', 'success');
     renderPage();
@@ -317,10 +318,10 @@ function bindModalEvents() {
     const date   = dateRaw ? new Date(dateRaw).toISOString() : nowISO();
 
     if (state.editingId) {
-      updateItem(KEYS.GLUCOSE, state.editingId, { value: val, period, notes, date });
+      updateGlucoseEntry(state.editingId, { value: val, period, notes, date });
       showToast('Registro atualizado', 'success');
     } else {
-      addItem(KEYS.GLUCOSE, { id: generateId(), value: val, period, notes, date });
+      createGlucoseEntry({ value: val, period, notes, date });
       showToast(`Glicose ${val} mg/dL registrada`, 'success');
     }
 
@@ -382,7 +383,7 @@ function bindPageEvents() {
   });
 }
 
-/* ── partial re-render (list + summary only) ── */
+/* ── partial re-render ── */
 function renderList_update() {
   const records  = filterAndSort(getList(KEYS.GLUCOSE));
   const settings = getSettings();

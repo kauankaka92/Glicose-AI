@@ -1,5 +1,7 @@
 import { getList, getSettings, KEYS } from './storage.js';
-import { getGlucoseStatus, formatDateTime, formatDate, formatTime, isSameDay, showToast } from './utils.js';
+import { getGlucoseStatus, formatDateTime, isSameDay, showToast } from './utils.js';
+import { createGlucoseEntry } from './api.js';
+import { parseGlucoseText, detectIntent, formatConfirmation } from './nlp.js';
 
 const API_URL = '/api/chat';
 const MODEL = 'meta/llama-3.1-8b-instruct';
@@ -28,7 +30,7 @@ function glucoseTrend(records) {
   const last = records[0].value;
   const prev = records[1].value;
   const diff = last - prev;
-  const timeDiff = (new Date(records[0].date) - new Date(records[1].date)) / 60000; // minutos
+  const timeDiff = (new Date(records[0].date) - new Date(records[1].date)) / 60000;
   const rate = timeDiff > 0 ? (diff / timeDiff).toFixed(2) : 0;
   if (diff > 20) return `subindo rapidamente (+${diff} mg/dL, ~${rate} mg/dL/min)`;
   if (diff > 8)  return `subindo levemente (+${diff} mg/dL)`;
@@ -64,7 +66,7 @@ function todayFoodStats(records) {
   }), { kcal: 0, carbs: 0, protein: 0, fat: 0, count: 0 });
 }
 
-// ── Contexto clínico completo ─────────────────────────────────────────────
+// ── System Prompt ─────────────────────────────────────────────────────────
 
 function buildSystemPrompt() {
   const s = getSettings();
@@ -82,11 +84,11 @@ function buildSystemPrompt() {
   }).join('\n') || '  Nenhuma medição registrada.';
 
   const last5Food = food.slice(0, 5).map(r =>
-    `  • ${formatDateTime(r.date)} — ${r.name} | ${r.kcal || '?'} kcal | Carbs: ${r.carbs || '?'}g | Prot: ${r.protein || '?'}g | Gord: ${r.fat || '?'}g`
+    `  • ${formatDateTime(r.date)} — ${r.name} | ${r.kcal || '?'} kcal | Carbs: ${r.carbs || '?'}g`
   ).join('\n') || '  Nenhum alimento registrado.';
 
   const last5Insulin = insulin.slice(0, 5).map(r =>
-    `  • ${formatDateTime(r.date)} — ${r.total} UI total (correção: ${r.correction} UI, refeição: ${r.meal} UI) | Glicose: ${r.glucose} mg/dL | Carbs: ${r.carbs}g`
+    `  • ${formatDateTime(r.date)} — ${r.total} UI total | Glicose: ${r.glucose} mg/dL | Carbs: ${r.carbs}g`
   ).join('\n') || '  Nenhuma dose registrada.';
 
   const todayGlcStr = todayGlc
@@ -94,7 +96,7 @@ function buildSystemPrompt() {
     : 'Sem medições hoje.';
 
   const todayFoodStr = todayFood
-    ? `Hoje: ${todayFood.count} refeições | ${todayFood.kcal} kcal | Carbs: ${todayFood.carbs}g | Proteína: ${todayFood.protein}g | Gordura: ${todayFood.fat}g`
+    ? `Hoje: ${todayFood.count} refeições | ${todayFood.kcal} kcal | Carbs: ${todayFood.carbs}g`
     : 'Sem refeições registradas hoje.';
 
   return `Você é um assistente direto e objetivo para diabéticos.
@@ -117,15 +119,6 @@ FÓRMULA DO PACIENTE:
 
 REGRA ABSOLUTA: NUNCA use decimais. Sempre arredonde para o inteiro mais próximo.
 
-EXEMPLOS DE RESPOSTA CORRETA:
-  Usuário: "678"
-  Resposta: "**Tome 14 UI agora.** Se for comer algo, tome 17-20 UI.
-  (678 − 100) ÷ 40 = 14,45 → 14 UI"
-
-  Usuário: "minha glicose tá 200"
-  Resposta: "**Tome 3 UI de correção.**
-  (200 − 100) ÷ 40 = 2,5 → 3 UI. Se for comer, some a dose de refeição."
-
 DADOS DO PACIENTE:
 ${s.name ? `Nome: ${s.name}` : ''}
 Meta: ${s.targetMin}–${s.targetMax} mg/dL | Alvo correção: ${s.correctionTarget} mg/dL | Sensibilidade: ${s.insulinSensitivity} | Carbo/UI: ${s.carbRatio}g
@@ -135,6 +128,54 @@ ${todayGlcStr}
 Hoje alimentação: ${todayFoodStr}
 Últimas refeições: ${last5Food}
 Últimas doses: ${last5Insulin}`;
+}
+
+// ── NLP Auto-Register ─────────────────────────────────────────────────────
+
+async function tryAutoRegister(text) {
+  const parsed = parseGlucoseText(text);
+
+  if (parsed.intent !== 'register_glucose' || !parsed.valid) {
+    return false;
+  }
+
+  // Salva via API layer
+  await createGlucoseEntry({
+    value: parsed.value,
+    period: parsed.period,
+    notes: parsed.notes,
+    date: parsed.date
+  });
+
+  // Monta mensagem de confirmação visual
+  const s = getSettings();
+  const status = getGlucoseStatus(parsed.value, s);
+  const statusColors = {
+    'normal': 'success',
+    'high': 'warning',
+    'very-high': 'warning',
+    'low': 'danger',
+    'very-low': 'danger'
+  };
+  const badgeClass = statusColors[status.key] || 'info';
+
+  const confirmHtml = `<span class="ai-register-confirm-value ${status.class}">${parsed.value} mg/dL</span><span class="ai-register-confirm-meta">${parsed.period}${parsed.notes ? ' · ' + parsed.notes : ''}</span>`;
+
+  messages.push({
+    role: 'assistant',
+    content: formatConfirmation(parsed),
+    isRegisterConfirm: true,
+    confirmHtml,
+    badgeClass,
+    statusLabel: status.label
+  });
+
+  showToast(`Glicose ${parsed.value} mg/dL registrada — ${parsed.period}`, 'success');
+
+  // Dispara evento para atualizar dashboard/glucose
+  window.dispatchEvent(new CustomEvent('glucose:registered', { detail: { value: parsed.value, period: parsed.period } }));
+
+  return true;
 }
 
 // ── Render ────────────────────────────────────────────────────────────────
@@ -159,33 +200,47 @@ function renderMessages() {
           <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/><circle cx="18" cy="5" r="3" fill="currentColor" stroke="none"/></svg>
         </div>
         <p class="ai-welcome-title">Assistente Glicose AI</p>
-        <p class="ai-welcome-sub">Analiso seus dados reais de glicose, dieta e insulina. Faço cálculos e explico tendências.</p>
+        <p class="ai-welcome-sub">Analiso seus dados reais. Calcule doses, registre glicose por texto livre ou pergunte sobre tendências.</p>
         <div class="ai-suggestions">
           ${[
-            'Calcule minha dose agora',
-            'Como está minha glicose hoje?',
-            'Vai subir ou baixar?',
-            'Analise minha dieta de hoje',
-            'Quantas calorias comi hoje?',
-            'Explique minha tendência'
+            '🩸 120 antes do almoço',
+            '💉 Calcule minha dose agora',
+            '📊 Como está minha glicose hoje?',
+            '🔮 Vai subir ou baixar?',
+            '🥗 Analise minha dieta de hoje',
+            '📈 Explique minha tendência'
           ].map(s => `<button class="ai-suggestion" type="button">${s}</button>`).join('')}
         </div>
       </div>`;
 
     container.querySelectorAll('.ai-suggestion').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.getElementById('ai-input').value = btn.textContent;
+        document.getElementById('ai-input').value = btn.textContent.replace(/^[^\s]+\s/, '');
         handleSend();
       });
     });
     return;
   }
 
-  container.innerHTML = messages.map(m => `
-    <div class="ai-msg ai-msg--${m.role}">
-      ${m.role === 'assistant' ? `<div class="ai-msg-avatar" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/><circle cx="18" cy="5" r="3" fill="currentColor" stroke="none"/></svg></div>` : ''}
-      <div class="ai-msg-bubble">${escapeHtml(m.content)}</div>
-    </div>`).join('');
+  container.innerHTML = messages.map(m => {
+    if (m.isRegisterConfirm) {
+      return `
+        <div class="ai-msg ai-msg--assistant">
+          <div class="ai-msg-avatar" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/><circle cx="18" cy="5" r="3" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <div class="ai-msg-bubble ai-register-confirm">
+            ${m.confirmHtml}
+            <span class="badge badge-${m.badgeClass}" style="margin-top:6px;display:inline-flex;">${m.statusLabel}</span>
+          </div>
+        </div>`;
+    }
+    return `
+      <div class="ai-msg ai-msg--${m.role}">
+        ${m.role === 'assistant' ? `<div class="ai-msg-avatar" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/><circle cx="18" cy="5" r="3" fill="currentColor" stroke="none"/></svg></div>` : ''}
+        <div class="ai-msg-bubble">${escapeHtml(m.content)}</div>
+      </div>`;
+  }).join('');
 
   if (isLoading) {
     container.innerHTML += `
@@ -209,8 +264,15 @@ function setInputState(disabled) {
 
 async function sendMessage(userText) {
   if (isLoading || !userText.trim()) return;
-  isLoading = true;
 
+  // Tenta auto-registro NLP primeiro
+  const registered = await tryAutoRegister(userText);
+  if (registered) {
+    renderMessages();
+    return;
+  }
+
+  isLoading = true;
   messages.push({ role: 'user', content: userText });
   renderMessages();
   setInputState(true);
@@ -223,7 +285,7 @@ async function sendMessage(userText) {
         model: MODEL,
         messages: [
           { role: 'system', content: buildSystemPrompt() },
-          ...messages
+          ...messages.filter(m => !m.isRegisterConfirm)
         ],
         temperature: 0.4,
         max_tokens: 1024

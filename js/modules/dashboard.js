@@ -7,14 +7,14 @@ function glucoseIcon() {
 }
 
 function trendArrow(records) {
-  if (records.length < 2) return { icon: '', label: 'Sem tendência' };
+  if (records.length < 2) return { icon: '', label: 'Sem tendência', cls: '' };
   const last = records[0].value;
   const prev = records[1].value;
   const diff = last - prev;
   if (diff > 15) return { icon: '↑', label: 'Subindo', cls: 'glucose-high' };
-  if (diff > 5) return { icon: '↗', label: 'Subindo levemente', cls: 'glucose-high' };
+  if (diff > 5)  return { icon: '↗', label: 'Subindo levemente', cls: 'glucose-high' };
   if (diff < -15) return { icon: '↓', label: 'Caindo', cls: 'glucose-low' };
-  if (diff < -5) return { icon: '↘', label: 'Caindo levemente', cls: 'glucose-low' };
+  if (diff < -5)  return { icon: '↘', label: 'Caindo levemente', cls: 'glucose-low' };
   return { icon: '→', label: 'Estável', cls: 'glucose-normal' };
 }
 
@@ -28,6 +28,85 @@ function todayStats(records) {
     min: Math.min(...values),
     max: Math.max(...values)
   };
+}
+
+// ── Insights inteligentes ─────────────────────────────────────────────────
+
+function buildInsight(records, settings) {
+  if (!records.length) return null;
+
+  const last7 = records.slice(0, 7);
+  const values = last7.map(r => r.value);
+  const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+  const inRange = last7.filter(r => getGlucoseStatus(r.value, settings).key === 'normal').length;
+  const pct = Math.round((inRange / last7.length) * 100);
+
+  const trend = trendArrow(records);
+  const latest = records[0];
+  const status = getGlucoseStatus(latest.value, settings);
+
+  // Tendência de alta
+  if (records.length >= 3) {
+    const last3 = records.slice(0, 3).map(r => r.value);
+    const allRising = last3[0] > last3[1] && last3[1] > last3[2];
+    const allFalling = last3[0] < last3[1] && last3[1] < last3[2];
+
+    if (allRising && latest.value > settings.targetMax) {
+      return { type: 'rising', icon: '📈', text: `<strong>Tendência de alta</strong> nas últimas 3 medições. Média: ${avg} mg/dL.` };
+    }
+    if (allFalling && latest.value < settings.targetMin) {
+      return { type: 'falling', icon: '📉', text: `<strong>Tendência de queda</strong> nas últimas 3 medições. Fique atento à hipoglicemia.` };
+    }
+  }
+
+  // Alta porcentagem no alvo
+  if (pct >= 80) {
+    return { type: 'stable', icon: '✅', text: `<strong>${pct}% das medições</strong> no alvo nas últimas ${last7.length}. Ótimo controle!` };
+  }
+
+  // Glicose atual crítica
+  if (status.key === 'very-low' || status.key === 'low') {
+    return { type: 'falling', icon: '⚠️', text: `<strong>Glicose baixa agora (${latest.value} mg/dL).</strong> Considere ingerir carboidratos de rápida absorção.` };
+  }
+
+  if (status.key === 'very-high') {
+    return { type: 'rising', icon: '🔴', text: `<strong>Glicose muito alta (${latest.value} mg/dL).</strong> Verifique necessidade de correção.` };
+  }
+
+  // Estável
+  if (trend.label === 'Estável' && status.key === 'normal') {
+    return { type: 'stable', icon: '🎯', text: `<strong>Estável nas últimas medições.</strong> Glicose dentro da meta.` };
+  }
+
+  return { type: 'info', icon: '💡', text: `Média das últimas ${last7.length} medições: <strong>${avg} mg/dL</strong>. ${pct}% no alvo.` };
+}
+
+// ── Render sections ───────────────────────────────────────────────────────
+
+function renderGreeting(settings) {
+  const h = new Date().getHours();
+  const greeting = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+  const name = settings.name ? `, ${settings.name.split(' ')[0]}` : '';
+  const today = new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' });
+
+  return `
+    <div class="dash-greeting">
+      <div>
+        <div class="dash-greeting-text">${greeting}${name} 👋</div>
+        <div class="dash-greeting-sub">Seu painel de saúde</div>
+      </div>
+      <span class="dash-date-badge">${today}</span>
+    </div>`;
+}
+
+function renderInsight(records, settings) {
+  const insight = buildInsight(records, settings);
+  if (!insight) return '';
+  return `
+    <div class="dash-insight dash-insight--${insight.type}" role="status" aria-label="Insight de saúde">
+      <div class="dash-insight-icon" aria-hidden="true">${insight.icon}</div>
+      <p class="dash-insight-text">${insight.text}</p>
+    </div>`;
 }
 
 function renderCurrentGlucose(records, settings) {
@@ -52,12 +131,13 @@ function renderCurrentGlucose(records, settings) {
   const status = getGlucoseStatus(latest.value, settings);
   const trend = trendArrow(records);
   const isToday = isSameDay(latest.date, new Date());
+  const badgeClass = status.key === 'normal' ? 'success' : (status.key === 'high' || status.key === 'very-high') ? 'warning' : 'danger';
 
   return `
     <div class="dash-glucose-card card dash-glucose-card--${status.key}">
       <div class="dash-glucose-header">
         <span class="card-title">Glicose Atual</span>
-        <span class="badge badge-${status.key === 'normal' ? 'success' : (status.key === 'high' || status.key === 'very-high') ? 'warning' : 'danger'}">${status.label}</span>
+        <span class="badge badge-${badgeClass}">${status.label}</span>
       </div>
       <div class="dash-glucose-body">
         <div class="dash-glucose-value-wrap">
@@ -70,18 +150,16 @@ function renderCurrentGlucose(records, settings) {
           ${latest.period ? `<span class="dash-glucose-period">${latest.period}</span>` : ''}
         </div>
       </div>
-      <div class="dash-glucose-range">
-        <div class="dash-range-bar" role="img" aria-label="Barra de faixa glicêmica">
-          <div class="dash-range-track">
-            <div class="dash-range-fill" style="--pct:${Math.min(100, Math.max(0, ((latest.value - 40) / (360 - 40)) * 100))}%"></div>
-            <div class="dash-range-marker dash-range-low" style="left:${((settings.targetMin - 40) / 320) * 100}%" aria-hidden="true"></div>
-            <div class="dash-range-marker dash-range-high" style="left:${((settings.targetMax - 40) / 320) * 100}%" aria-hidden="true"></div>
-          </div>
-          <div class="dash-range-labels" aria-hidden="true">
-            <span>${settings.targetMin}</span>
-            <span>Meta</span>
-            <span>${settings.targetMax}</span>
-          </div>
+      <div class="dash-range-bar" role="img" aria-label="Barra de faixa glicêmica">
+        <div class="dash-range-track">
+          <div class="dash-range-fill" style="--pct:${Math.min(100, Math.max(0, ((latest.value - 40) / (360 - 40)) * 100))}%"></div>
+          <div class="dash-range-marker dash-range-low" style="left:${((settings.targetMin - 40) / 320) * 100}%" aria-hidden="true"></div>
+          <div class="dash-range-marker dash-range-high" style="left:${((settings.targetMax - 40) / 320) * 100}%" aria-hidden="true"></div>
+        </div>
+        <div class="dash-range-labels" aria-hidden="true">
+          <span>${settings.targetMin}</span>
+          <span>Meta</span>
+          <span>${settings.targetMax}</span>
         </div>
       </div>
       <button class="btn btn-secondary btn-sm dash-btn-new" id="dash-btn-add-glucose" type="button">
@@ -130,11 +208,10 @@ function renderRecentReadings(records, settings) {
       <div class="card" style="padding:0 16px;">
         ${recent.map(r => {
           const s = getGlucoseStatus(r.value, settings);
+          const iconBg = s.key === 'normal' ? 'bg-glucose-normal' : (s.key === 'high' || s.key === 'very-high') ? 'bg-glucose-high' : 'bg-glucose-low';
           return `
             <div class="list-item">
-              <div class="list-item-icon ${s.key === 'normal' ? 'bg-glucose-normal' : s.key === 'high' || s.key === 'very-high' ? 'bg-glucose-high' : 'bg-glucose-low'}" aria-hidden="true">
-                ${glucoseIcon()}
-              </div>
+              <div class="list-item-icon ${iconBg}" aria-hidden="true">${glucoseIcon()}</div>
               <div class="list-item-content">
                 <span class="list-item-title">${r.period || 'Medição'}</span>
                 <span class="list-item-subtitle">${formatRelative(r.date)}</span>
@@ -151,12 +228,12 @@ function renderRecentReadings(records, settings) {
 
 function renderShortcuts() {
   const shortcuts = [
-    { nav: 'glucose', label: 'Glicose', color: '#6366f1', icon: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>` },
-    { nav: 'food', label: 'Dieta', color: '#22c55e', icon: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>` },
-    { nav: 'insulin', label: 'Insulina', color: '#f59e0b', icon: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m18 2 4 4"/><path d="m17 7 1-5"/><path d="M3 22 17 8"/><path d="m15 4 5 5"/><path d="m6 18 3.5-3.5"/></svg>` },
-    { nav: 'charts', label: 'Gráficos', color: '#3b82f6', icon: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>` },
-    { nav: 'calendar', label: 'Calendário', color: '#8b5cf6', icon: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>` },
-    { nav: 'reminders', label: 'Lembretes', color: '#ec4899', icon: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>` },
+    { nav: 'glucose', label: 'Glicose', color: '#6366f1', bg: 'rgba(99,102,241,0.12)', icon: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>` },
+    { nav: 'food', label: 'Dieta', color: '#10d98a', bg: 'rgba(16,217,138,0.12)', icon: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>` },
+    { nav: 'insulin', label: 'Insulina', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', icon: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m18 2 4 4"/><path d="m17 7 1-5"/><path d="M3 22 17 8"/><path d="m15 4 5 5"/><path d="m6 18 3.5-3.5"/></svg>` },
+    { nav: 'charts', label: 'Gráficos', color: '#38bdf8', bg: 'rgba(56,189,248,0.12)', icon: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>` },
+    { nav: 'calendar', label: 'Calendário', color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)', icon: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>` },
+    { nav: 'reminders', label: 'Lembretes', color: '#f43f5e', bg: 'rgba(244,63,94,0.12)', icon: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>` },
   ];
   return `
     <div class="section">
@@ -164,28 +241,11 @@ function renderShortcuts() {
       <div class="dash-shortcuts">
         ${shortcuts.map(s => `
           <button class="dash-shortcut" data-nav-link="${s.nav}" type="button" aria-label="Ir para ${s.label}">
-            <div class="dash-shortcut-icon" style="background:${s.color}20;color:${s.color}" aria-hidden="true">${s.icon}</div>
+            <div class="dash-shortcut-icon" style="background:${s.bg};color:${s.color}" aria-hidden="true">${s.icon}</div>
             <span class="dash-shortcut-label">${s.label}</span>
           </button>`).join('')}
       </div>
     </div>`;
-}
-
-function renderGreeting(settings) {
-  const h = new Date().getHours();
-  const greeting = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-  const name = settings.name ? `, ${settings.name.split(' ')[0]}` : '';
-  return `<div class="dash-greeting"><span>${greeting}${name} 👋</span></div>`;
-}
-
-function openQuickAdd() {
-  const overlay = document.getElementById('dash-quick-modal');
-  if (overlay) { overlay.classList.add('open'); document.getElementById('dash-quick-value')?.focus(); }
-}
-
-function closeQuickAdd() {
-  const overlay = document.getElementById('dash-quick-modal');
-  if (overlay) overlay.classList.remove('open');
 }
 
 function renderQuickAddModal(settings) {
@@ -207,7 +267,7 @@ function renderQuickAddModal(settings) {
           <div class="form-group" id="fg-value">
             <label class="form-label" for="dash-quick-value">Glicose (${settings.unit || 'mg/dL'})</label>
             <input class="form-input" id="dash-quick-value" type="number" inputmode="numeric" min="20" max="600" placeholder="Ex: 120" autocomplete="off" required />
-            <span class="form-error" id="dash-quick-value-err">Informe um valor entre 20 e 600</span>
+            <span class="form-error">Informe um valor entre 20 e 600</span>
           </div>
           <div class="form-group">
             <label class="form-label" for="dash-quick-period">Período</label>
@@ -226,6 +286,18 @@ function renderQuickAddModal(settings) {
         </form>
       </div>
     </div>`;
+}
+
+// ── Events ────────────────────────────────────────────────────────────────
+
+function openQuickAdd() {
+  const overlay = document.getElementById('dash-quick-modal');
+  if (overlay) { overlay.classList.add('open'); document.getElementById('dash-quick-value')?.focus(); }
+}
+
+function closeQuickAdd() {
+  const overlay = document.getElementById('dash-quick-modal');
+  if (overlay) overlay.classList.remove('open');
 }
 
 function bindEvents() {
@@ -261,6 +333,8 @@ function bindEvents() {
   });
 }
 
+// ── Render ────────────────────────────────────────────────────────────────
+
 function render() {
   const el = document.getElementById('dashboard-content');
   if (!el) return;
@@ -270,6 +344,7 @@ function render() {
   el.innerHTML = `
     ${renderGreeting(settings)}
     ${renderCurrentGlucose(records, settings)}
+    ${renderInsight(records, settings)}
     ${renderTodayStats(records, settings)}
     ${renderShortcuts()}
     ${renderRecentReadings(records, settings)}
@@ -279,7 +354,12 @@ function render() {
   bindEvents();
 }
 
-function init() { render(); }
+function init() {
+  render();
+  // Atualiza dashboard quando glicose é registrada via IA
+  window.addEventListener('glucose:registered', () => render());
+}
+
 function refresh() { render(); }
 
 export { init, refresh };
