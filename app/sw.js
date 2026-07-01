@@ -12,6 +12,7 @@ const ASSETS = [
   '/app/css/calendar.css',
   '/app/css/reminders.css',
   '/app/css/settings.css',
+  '/app/css/ai.css',
   '/app/js/app.js',
   '/app/js/modules/storage.js',
   '/app/js/modules/theme.js',
@@ -25,6 +26,7 @@ const ASSETS = [
   '/app/js/modules/calendar.js',
   '/app/js/modules/reminders.js',
   '/app/js/modules/settings.js',
+  '/app/js/modules/ai.js',
   '/app/pages/dashboard.html',
   '/app/pages/glucose.html',
   '/app/pages/food.html',
@@ -33,6 +35,7 @@ const ASSETS = [
   '/app/pages/calendar.html',
   '/app/pages/reminders.html',
   '/app/pages/settings.html',
+  '/app/pages/ai.html',
   '/app/manifest.json',
   '/app/icons/icon-192.svg',
   '/app/icons/icon-512.svg'

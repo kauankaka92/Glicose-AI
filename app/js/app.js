@@ -9,7 +9,8 @@ const PAGE_TITLES = {
   charts: 'Gráficos',
   calendar: 'Calendário',
   reminders: 'Lembretes',
-  settings: 'Configurações'
+  settings: 'Configurações',
+  ai: 'Assistente IA'
 };
 
 async function loadPage(name) {
@@ -24,7 +25,7 @@ async function loadPage(name) {
 }
 
 async function initPages() {
-  const pages = ['dashboard', 'glucose', 'food', 'insulin', 'charts', 'calendar', 'reminders', 'settings'];
+  const pages = ['dashboard', 'glucose', 'food', 'insulin', 'charts', 'calendar', 'reminders', 'settings', 'ai'];
   await Promise.all(pages.map(loadPage));
 }
 
@@ -66,7 +67,8 @@ async function init() {
     charts: () => import('./modules/charts.js'),
     calendar: () => import('./modules/calendar.js'),
     reminders: () => import('./modules/reminders.js'),
-    settings: () => import('./modules/settings.js')
+    settings: () => import('./modules/settings.js'),
+    ai: () => import('./modules/ai.js')
   };
 
   const initialized = new Set();
