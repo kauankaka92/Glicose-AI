@@ -2,29 +2,34 @@ export const config = { runtime: 'edge' };
 
 const NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
 
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type'
+};
+
 export default async function handler(req) {
   if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: cors()
-    });
+    return new Response(null, { status: 204, headers: CORS });
   }
 
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405, headers: cors() });
+    return json({ error: 'Method not allowed' }, 405);
+  }
+
+  const apiKey = process.env.NVIDIA_NIM_API_KEY;
+  if (!apiKey) {
+    return json({ error: 'NVIDIA_NIM_API_KEY not set in Vercel Environment Variables' }, 500);
+  }
+
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return json({ error: 'Invalid JSON body' }, 400);
   }
 
   try {
-    const body = await req.json();
-    const apiKey = process.env.NVIDIA_NIM_API_KEY;
-
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'API key not configured' }), {
-        status: 500,
-        headers: { ...cors(), 'Content-Type': 'application/json' }
-      });
-    }
-
     const upstream = await fetch(NVIDIA_URL, {
       method: 'POST',
       headers: {
@@ -35,23 +40,15 @@ export default async function handler(req) {
     });
 
     const data = await upstream.json();
-
-    return new Response(JSON.stringify(data), {
-      status: upstream.status,
-      headers: { ...cors(), 'Content-Type': 'application/json' }
-    });
+    return json(data, upstream.status);
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...cors(), 'Content-Type': 'application/json' }
-    });
+    return json({ error: err.message }, 502);
   }
 }
 
-function cors() {
-  return {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-  };
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...CORS, 'Content-Type': 'application/json' }
+  });
 }

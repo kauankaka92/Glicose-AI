@@ -1,26 +1,44 @@
 {
+  "public": true,
   "rewrites": [
-    { "source": "/api/chat", "destination": "/api/chat.js" },
     { "source": "/favicon.ico", "destination": "/app/icons/icon-192.svg" },
     { "source": "/", "destination": "/index.html" }
   ],
   "headers": [
     {
-      "source": "/app/js/(.*)",
-      "headers": [{ "key": "Content-Type", "value": "application/javascript" }]
+      "source": "/app/manifest.json",
+      "headers": [
+        { "key": "Content-Type", "value": "application/manifest+json" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Cache-Control", "value": "public, max-age=86400" }
+      ]
     },
     {
       "source": "/app/sw.js",
       "headers": [
         { "key": "Content-Type", "value": "application/javascript" },
-        { "key": "Service-Worker-Allowed", "value": "/" }
+        { "key": "Service-Worker-Allowed", "value": "/" },
+        { "key": "Cache-Control", "value": "no-cache" }
+      ]
+    },
+    {
+      "source": "/app/js/(.*)\\.js",
+      "headers": [
+        { "key": "Content-Type", "value": "application/javascript" }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
       ]
     },
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" }
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
       ]
     }
   ]
