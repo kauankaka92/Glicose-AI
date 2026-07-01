@@ -1,4 +1,4 @@
-const CACHE_NAME = 'glicose-ai-v4';
+const CACHE_NAME = 'glicose-ai-v6';
 const ASSETS = [
   '/',
   '/index.html',
@@ -31,6 +31,8 @@ const ASSETS = [
   '/js/modules/ai.js',
   '/js/modules/api.js',
   '/js/modules/nlp.js',
+  '/js/modules/foodDatabase.js',
+  '/js/modules/contextManager.js',
   '/pages/dashboard.html',
   '/pages/glucose.html',
   '/pages/food.html',

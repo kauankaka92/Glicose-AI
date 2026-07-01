@@ -10,16 +10,6 @@ const MODEL = 'meta/llama-3.1-8b-instruct';
 let messages = [];
 let isLoading = false;
 
-// ── Cálculos clínicos ─────────────────────────────────────────────────────
-
-function calcDose(glucose, carbs, settings) {
-  const { insulinSensitivity: sens, carbRatio, correctionTarget: target } = settings;
-  if (!sens || !carbRatio || !target) return null;
-  const correction = Math.max(0, Math.round((glucose - target) / sens));
-  const meal = Math.round(carbs / carbRatio);
-  return { correction, meal, total: correction + meal };
-}
-
 function glucoseTrend(records) {
   if (records.length < 2) return 'sem dados suficientes';
   const diff = records[0].value - records[1].value;
@@ -76,7 +66,7 @@ async function tryAutoRegister(text) {
 
   if (result.intent === 'unknown') return false;
 
-  // Executar ações detectadas
+  // Executar todas as ações detectadas
   for (const action of result.actions) {
     if (action.type === 'create_glucose') {
       await createGlucoseEntry(action.data);
@@ -90,16 +80,15 @@ async function tryAutoRegister(text) {
     }
   }
 
-  // Montar resposta compacta
   const html = buildNlpResponseHtml(result, settings);
   messages.push({ role: 'assistant', content: '', isNlpCard: true, html });
 
-  const toastMap = {
-    glucose: `Glicose ${result.glucose} mg/dL registrada`,
-    meal: `Refeição registrada — ${result.meal?.totals?.carbs || 0}g carbs`,
-    insulin: `${result.insulin} U registradas`
-  };
-  if (toastMap[result.intent]) showToast(toastMap[result.intent], 'success');
+  // Toast resumido
+  const parts = [];
+  if (result.glucose) parts.push(`Glicose ${result.glucose} mg/dL`);
+  if (result.insulin) parts.push(`${result.insulin} U insulina`);
+  if (result.meal) parts.push(`refeição registrada`);
+  if (parts.length) showToast(parts.join(' · '), 'success');
 
   return true;
 }
@@ -110,62 +99,50 @@ function nlpIcon(type) {
 
 function buildNlpResponseHtml(result, settings) {
   const lines = [];
+  const ctx = getContext();
 
-  if (result.intent === 'glucose') {
+  // ── Glicose ──
+  if (result.glucose) {
     const status = getGlucoseStatus(result.glucose, settings);
     lines.push(`<div class="nlp-row">${nlpIcon('glucose')}<span class="nlp-label">Glicose registrada</span></div>`);
     lines.push(`<div class="nlp-value nlp-value--glucose">${result.glucose} <small style="font-size:0.9rem;font-weight:600">mg/dL</small></div>`);
     lines.push(`<div class="nlp-meta">${result.period} · ${status.label}</div>`);
   }
 
-  if (result.intent === 'meal') {
+  // ── Refeição ──
+  if (result.meal) {
     const meal = result.meal;
-    const foodNames = meal.foods.length
-      ? meal.foods.map(f => f.name).join(', ')
-      : 'Refeição';
-    const ctx = getContext();
-    const lastGlucose = ctx.lastGlucose?.value || getList(KEYS.GLUCOSE)[0]?.value;
-
+    const foodNames = meal.foods.length ? meal.foods.map(f => f.name).join(', ') : 'Refeição';
+    if (result.glucose) lines.push(`<div class="nlp-divider"></div>`);
     lines.push(`<div class="nlp-row">${nlpIcon('meal')}<span class="nlp-label">${meal.period} registrado</span></div>`);
     lines.push(`<div class="nlp-foods">${foodNames}</div>`);
-
     if (meal.unknown?.length) {
       lines.push(`<div class="nlp-unknown">${meal.unknown.join(', ')} — porção padrão estimada</div>`);
     }
-
-    lines.push(`<div class="nlp-divider"></div>`);
-
-    if (lastGlucose) {
-      lines.push(`<div class="nlp-row nlp-row--sm">${nlpIcon('glucose')}<span>Glicose: <strong>${lastGlucose} mg/dL</strong></span></div>`);
-    }
-
     lines.push(`<div class="nlp-row nlp-row--sm">${nlpIcon('carbs')}<span>Carbs: <strong>${meal.totals.carbs}g</strong> · porção padrão</span></div>`);
-
-    if (lastGlucose && settings?.insulinSensitivity && settings?.carbRatio) {
-      const dose = calcDose(lastGlucose, meal.totals.carbs, settings);
-      if (dose) {
-        lines.push(`
-          <div class="nlp-dose-block">
-            <div class="nlp-dose-label">Sugestão calculada</div>
-            <div class="nlp-dose-value">${dose.total} U</div>
-            <div class="nlp-dose-detail">Correção ${dose.correction}U + refeição ${dose.meal}U · baseado nas suas configurações</div>
-          </div>`);
-      }
-    } else if (!lastGlucose) {
-      lines.push(`<div class="nlp-unknown">Informe sua glicose para calcular a dose.</div>`);
-    }
-
-    lines.push(`<div class="nlp-saved">${nlpIcon('ok')} Salvo no diário</div>`);
   }
 
-  if (result.intent === 'insulin') {
-    const ctx = getContext();
-    const lastGlucose = ctx.lastGlucose?.value;
+  // ── Insulina ──
+  if (result.insulin) {
+    if (result.glucose || result.meal) lines.push(`<div class="nlp-divider"></div>`);
+    const d = result.insulinDetail;
     lines.push(`<div class="nlp-row">${nlpIcon('insulin')}<span class="nlp-label">Insulina registrada</span></div>`);
     lines.push(`<div class="nlp-value nlp-value--insulin">${result.insulin} <small style="font-size:0.9rem;font-weight:600">U</small></div>`);
-    if (lastGlucose) lines.push(`<div class="nlp-meta">Glicose associada: ${lastGlucose} mg/dL</div>`);
-    lines.push(`<div class="nlp-saved">${nlpIcon('ok')} Salvo no diário</div>`);
+
+    // Mostrar detalhamento se vier composto
+    if (d && (d.correction > 0 || d.meal > 0)) {
+      lines.push(`<div class="nlp-dose-detail" style="padding-left:2px">`);
+      if (d.correction > 0) lines.push(`Correção: ${d.correction}U`);
+      if (d.correction > 0 && d.meal > 0) lines.push(` &nbsp;+&nbsp; `);
+      if (d.meal > 0) lines.push(`Alimento: ${d.meal}U`);
+      lines.push(`</div>`);
+    }
+
+    const glucoseRef = result.glucose || ctx.lastGlucose?.value;
+    if (glucoseRef) lines.push(`<div class="nlp-meta">Glicose associada: ${glucoseRef} mg/dL</div>`);
   }
+
+  lines.push(`<div class="nlp-saved">${nlpIcon('ok')} ${result.actions.length} registro${result.actions.length > 1 ? 's salvos' : ' salvo'} no diário</div>`);
 
   return `<div class="nlp-card">${lines.join('')}</div>`;
 }

@@ -16,12 +16,6 @@ const GLUCOSE_PATTERNS = [
   /(?:glicose|glicemia)[:\s]*(\d{2,3})/i,
 ];
 
-const INSULIN_PATTERNS = [
-  /(?:tomei|apliquei|usei|coloquei)[:\s]*(\d{1,2})\s*(?:u|unidade|unidades)?/i,
-  /(\d{1,2})\s*(?:u|unidade|unidades)(?:\s+de\s+insulina)?/i,
-  /insulina[:\s]*(\d{1,2})/i,
-];
-
 const MEAL_TRIGGERS = [
   'comi', 'almocei', 'jantei', 'jantar', 'almoço', 'almoco', 'lanche', 'café', 'cafe',
   'ceia', 'café da manhã', 'cafe da manha', 'sobremesa', 'churrasco', 'pizzada'
@@ -58,16 +52,52 @@ function extractGlucoseValue(text) {
   return null;
 }
 
-// ── Extração de dose de insulina ───────────────────────────────────────────
+// ── Extração de dose de insulina (simples e composta) ────────────────────
 
-function extractInsulinDose(text) {
-  for (const pattern of INSULIN_PATTERNS) {
-    const match = text.match(pattern);
-    if (match) {
-      const val = parseInt(match[1], 10);
-      if (val >= 1 && val <= 100) return val;
+// Retorna { correction, meal, total } ou null
+function extractInsulinDoses(text) {
+  const lower = text.toLowerCase();
+
+  // Padrão composto: "10 de correção e 5 de alimento/refeição"
+  const compostoPatterns = [
+    /(?:tomei|apliquei|usei)?\s*(\d{1,2})\s*(?:u|unidades?)?\s*(?:de\s+)?corre[çc][aã]o\s+e\s+(\d{1,2})\s*(?:u|unidades?)?\s*(?:de\s+)?(?:alimento|refei[çc][aã]o|comida|jantar|almo[çc]o|lanche)/i,
+    /(?:tomei|apliquei|usei)?\s*(\d{1,2})\s*(?:u|unidades?)?\s*(?:de\s+)?(?:alimento|refei[çc][aã]o|comida)\s+e\s+(\d{1,2})\s*(?:u|unidades?)?\s*(?:de\s+)?corre[çc][aã]o/i,
+    /corre[çc][aã]o[:\s]+(\d{1,2})\s*(?:u|unidades?)?.*?(?:alimento|refei[çc][aã]o)[:\s]+(\d{1,2})/i,
+    /(?:tomei|apliquei)\s*(\d{1,2})\s*(?:u|unidades?)?\s*(?:de\s+)?corre[çc][aã]o\s*\+?\s*(\d{1,2})\s*(?:u|unidades?)?\s*(?:de\s+)?(?:alimento|refei[çc][aã]o)/i,
+    // "10 + 5", "10 e 5 unidades"
+    /(?:tomei|apliquei|usei)\s*(\d{1,2})\s*\+\s*(\d{1,2})\s*(?:u|unidades?)?/i,
+  ];
+
+  for (const p of compostoPatterns) {
+    const m = lower.match(p);
+    if (m) {
+      const a = parseInt(m[1], 10);
+      const b = parseInt(m[2], 10);
+      if (a >= 1 && a <= 100 && b >= 1 && b <= 100) {
+        // Determinar qual é correção e qual é refeição
+        const isFirstCorrection = /corre[çc][aã]o/.test(lower.slice(0, lower.indexOf(String(a)) + 5));
+        const correction = isFirstCorrection ? a : b;
+        const meal = isFirstCorrection ? b : a;
+        return { correction, meal, total: correction + meal };
+      }
     }
   }
+
+  // Padrão simples: um único valor
+  const simplePatterns = [
+    /(?:tomei|apliquei|usei|coloquei)[:\s]*(\d{1,2})\s*(?:u|unidade|unidades)?/i,
+    /(\d{1,2})\s*(?:u|unidade|unidades)(?:\s+de\s+insulina)?/i,
+    /insulina[:\s]*(\d{1,2})/i,
+  ];
+
+  for (const p of simplePatterns) {
+    const m = text.match(p);
+    if (m) {
+      const val = parseInt(m[1], 10);
+      if (val >= 1 && val <= 100) return { correction: 0, meal: 0, total: val };
+    }
+  }
+
   return null;
 }
 
@@ -123,82 +153,88 @@ function inferPeriod() {
   return 'Madrugada';
 }
 
-// ── Análise principal ──────────────────────────────────────────────────────
+// ── Análise principal — multi-intent ──────────────────────────────────────
 
 function analyze(text, settings) {
   const result = {
     intent: 'unknown',
     glucose: null,
     insulin: null,
+    insulinDetail: null, // { correction, meal, total }
     meal: null,
     period: null,
-    response: null,
     actions: []
   };
+
+  const lower = text.toLowerCase();
+
+  // Detectar período da mensagem inteira
+  let period = inferPeriod();
+  for (const [key, value] of Object.entries(PERIOD_MAP)) {
+    if (lower.includes(key)) { period = value; break; }
+  }
+  result.period = period;
 
   // 1. Detectar glicose
   const glucoseVal = extractGlucoseValue(text);
   if (glucoseVal) {
     result.glucose = glucoseVal;
-    result.intent = 'glucose';
-    result.period = inferPeriod();
-
-    setLastGlucose(glucoseVal, result.period);
+    setLastGlucose(glucoseVal, period);
     result.actions.push({
       type: 'create_glucose',
-      data: { value: glucoseVal, period: result.period, date: nowISO() }
+      data: { value: glucoseVal, period, date: nowISO() }
     });
-
-    return result;
   }
 
-  // 2. Detectar insulina
-  const insulinVal = extractInsulinDose(text);
-  if (insulinVal) {
-    result.insulin = insulinVal;
-    result.intent = 'insulin';
-
+  // 2. Detectar insulina (simples ou composta)
+  const insulinDoses = extractInsulinDoses(text);
+  if (insulinDoses) {
+    result.insulin = insulinDoses.total;
+    result.insulinDetail = insulinDoses;
     const ctx = getContext();
-    setLastInsulin(insulinVal, ctx.lastGlucose?.value, ctx.lastFood?.carbs);
+    const glucoseForInsulin = glucoseVal || ctx.lastGlucose?.value;
+    setLastInsulin(insulinDoses.total, glucoseForInsulin, ctx.lastFood?.carbs);
     result.actions.push({
       type: 'create_insulin',
-      data: { dose: insulinVal, glucose: ctx.lastGlucose?.value, date: nowISO() }
-    });
-
-    return result;
-  }
-
-  // 3. Detectar refeição
-  const meal = detectMeal(text);
-  if (meal) {
-    result.meal = meal;
-    result.intent = 'meal';
-    result.period = meal.period;
-
-    setLastFood(meal.foods, meal.totals);
-
-    // Buscar última glicose do contexto ou do storage
-    const ctx = getContext();
-    let lastGlucose = ctx.lastGlucose?.value;
-    if (!lastGlucose) {
-      const glucoseRecords = getList(KEYS.GLUCOSE);
-      if (glucoseRecords.length) lastGlucose = glucoseRecords[0].value;
-    }
-
-    result.actions.push({
-      type: 'create_food',
       data: {
-        name: meal.foods.map(f => f.name).join(', '),
-        carbs: meal.totals.carbs,
-        kcal: meal.totals.kcal,
-        protein: meal.totals.protein,
-        fat: meal.totals.fat,
+        dose: insulinDoses.total,
+        total: insulinDoses.total,
+        correction: insulinDoses.correction,
+        meal: insulinDoses.meal,
+        glucose: glucoseForInsulin,
         date: nowISO()
       }
     });
   }
 
+  // 3. Detectar refeição
+  const mealData = detectMeal(text);
+  if (mealData) {
+    result.meal = mealData;
+    setLastFood(mealData.foods, mealData.totals);
+    result.actions.push({
+      type: 'create_food',
+      data: {
+        name: mealData.foods.map(f => f.name).join(', ') || 'Refeição',
+        carbs: mealData.totals.carbs,
+        kcal: mealData.totals.kcal,
+        protein: mealData.totals.protein,
+        fat: mealData.totals.fat,
+        period: mealData.period,
+        date: nowISO()
+      }
+    });
+  }
+
+  // Definir intent principal
+  if (result.glucose && result.insulin) result.intent = 'glucose_insulin';
+  else if (result.glucose && result.meal) result.intent = 'glucose_meal';
+  else if (result.glucose) result.intent = 'glucose';
+  else if (result.insulin && result.meal) result.intent = 'insulin_meal';
+  else if (result.insulin) result.intent = 'insulin';
+  else if (result.meal) result.intent = 'meal';
+
   return result;
 }
 
-export { analyze, extractGlucoseValue, extractInsulinDose, detectMeal, inferPeriod };
+export { analyze, extractGlucoseValue, extractInsulinDoses, detectMeal, inferPeriod };

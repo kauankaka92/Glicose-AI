@@ -200,8 +200,18 @@ function renderResult(inputs, result, s) {
 }
 
 /* ── render: history ── */
+function normalizeInsulinRecord(r) {
+  // Registros salvos pelo NLP usam { dose } em vez de { total }
+  const total      = r.total      ?? r.dose      ?? 0;
+  const correction = r.correction ?? 0;
+  const meal       = r.meal       ?? 0;
+  const carbs      = r.carbs      ?? 0;
+  const glucose    = r.glucose    ?? 0;
+  return { ...r, total, correction, meal, carbs, glucose };
+}
+
 function renderHistory() {
-  const records = getList(KEYS.INSULIN).slice(0, 20);
+  const records = getList(KEYS.INSULIN).slice(0, 20).map(normalizeInsulinRecord);
   if (!records.length) return '';
   return `
     <div class="section" id="ins-history-section">
@@ -220,7 +230,7 @@ function renderHistory() {
                 ${r.meal > 0 ? `<span class="ins-history-tag">Refeição: ${fmt(r.meal)} UI</span>` : ''}
               </div>
               <div class="ins-history-meta">
-                <span>Glicose: ${r.glucose} mg/dL</span>
+                ${r.glucose > 0 ? `<span>Glicose: ${r.glucose} mg/dL</span>` : ''}
                 ${r.carbs > 0 ? `<span class="glc-dot" aria-hidden="true">·</span><span>Carbs: ${r.carbs}g</span>` : ''}
                 <span class="glc-dot" aria-hidden="true">·</span>
                 <span>${formatTime(r.date)}, ${formatDate(r.date)}</span>
