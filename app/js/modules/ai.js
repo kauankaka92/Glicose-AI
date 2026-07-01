@@ -1,7 +1,8 @@
 import { getList, getSettings, KEYS } from './storage.js';
-import { getGlucoseStatus, formatDateTime, isSameDay, showToast } from './utils.js';
-import { createGlucoseEntry } from './api.js';
-import { parseGlucoseText, detectIntent, formatConfirmation } from './nlp.js';
+import { getGlucoseStatus, isSameDay, showToast } from './utils.js';
+import { createGlucoseEntry, createFoodEntry, createInsulinEntry } from './api.js';
+import { analyze } from './nlp.js';
+import { getContext } from './contextManager.js';
 
 const API_URL = '/api/chat';
 const MODEL = 'meta/llama-3.1-8b-instruct';
@@ -9,173 +10,164 @@ const MODEL = 'meta/llama-3.1-8b-instruct';
 let messages = [];
 let isLoading = false;
 
-// ── Cálculos clínicos locais ──────────────────────────────────────────────
+// ── Cálculos clínicos ─────────────────────────────────────────────────────
 
-function calcInsulinDose(glucose, carbs, settings) {
+function calcDose(glucose, carbs, settings) {
   const { insulinSensitivity: sens, carbRatio, correctionTarget: target } = settings;
   if (!sens || !carbRatio || !target) return null;
-  const correction = (glucose - target) / sens;
-  const meal = carbs > 0 ? carbs / carbRatio : 0;
-  const total = Math.max(0, correction) + meal;
-  return {
-    correction: Math.round(correction * 100) / 100,
-    correctionApplied: Math.max(0, Math.round(correction * 100) / 100),
-    meal: Math.round(meal * 100) / 100,
-    total: Math.round(total * 100) / 100
-  };
+  const correction = Math.max(0, Math.round((glucose - target) / sens));
+  const meal = Math.round(carbs / carbRatio);
+  return { correction, meal, total: correction + meal };
 }
 
 function glucoseTrend(records) {
-  if (records.length < 2) return 'sem dados suficientes para tendência';
-  const last = records[0].value;
-  const prev = records[1].value;
-  const diff = last - prev;
-  const timeDiff = (new Date(records[0].date) - new Date(records[1].date)) / 60000;
-  const rate = timeDiff > 0 ? (diff / timeDiff).toFixed(2) : 0;
-  if (diff > 20) return `subindo rapidamente (+${diff} mg/dL, ~${rate} mg/dL/min)`;
+  if (records.length < 2) return 'sem dados suficientes';
+  const diff = records[0].value - records[1].value;
+  if (diff > 20) return `subindo (+${diff} mg/dL)`;
   if (diff > 8)  return `subindo levemente (+${diff} mg/dL)`;
-  if (diff < -20) return `caindo rapidamente (${diff} mg/dL, ~${rate} mg/dL/min)`;
+  if (diff < -20) return `caindo (${diff} mg/dL)`;
   if (diff < -8)  return `caindo levemente (${diff} mg/dL)`;
-  return `estável (variação de ${diff} mg/dL)`;
+  return `estável (${diff > 0 ? '+' : ''}${diff} mg/dL)`;
 }
 
-function todayGlucoseStats(records) {
-  const today = records.filter(r => isSameDay(r.date, new Date()));
-  if (!today.length) return null;
-  const values = today.map(r => r.value);
-  const avg = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
-  const inRange = today.filter(r => getGlucoseStatus(r.value, getSettings()).key === 'normal').length;
-  return {
-    count: today.length,
-    avg,
-    min: Math.min(...values),
-    max: Math.max(...values),
-    inRangePct: Math.round((inRange / today.length) * 100)
-  };
+function todayStats(records, key) {
+  return records.filter(r => isSameDay(r.date, new Date()));
 }
 
-function todayFoodStats(records) {
-  const today = records.filter(r => isSameDay(r.date, new Date()));
-  if (!today.length) return null;
-  return today.reduce((acc, r) => ({
-    kcal:    Math.round(acc.kcal    + (r.kcal    || 0)),
-    carbs:   Math.round(acc.carbs   + (r.carbs   || 0)),
-    protein: Math.round(acc.protein + (r.protein || 0)),
-    fat:     Math.round(acc.fat     + (r.fat     || 0)),
-    count:   acc.count + 1
-  }), { kcal: 0, carbs: 0, protein: 0, fat: 0, count: 0 });
-}
-
-// ── System Prompt ─────────────────────────────────────────────────────────
+// ── System Prompt (para perguntas abertas) ────────────────────────────────
 
 function buildSystemPrompt() {
   const s = getSettings();
   const glucose = getList(KEYS.GLUCOSE);
   const food = getList(KEYS.FOOD);
   const insulin = getList(KEYS.INSULIN);
-
-  const todayGlc = todayGlucoseStats(glucose);
-  const todayFood = todayFoodStats(food);
   const trend = glucoseTrend(glucose);
 
-  const last5Glucose = glucose.slice(0, 5).map(r => {
-    const st = getGlucoseStatus(r.value, s);
-    return `  • ${formatDateTime(r.date)} — ${r.value} mg/dL (${st.label}${r.period ? ', ' + r.period : ''})`;
-  }).join('\n') || '  Nenhuma medição registrada.';
+  const todayGlc = todayStats(glucose);
+  const todayGlcStr = todayGlc.length
+    ? `${todayGlc.length} medições hoje | Média: ${Math.round(todayGlc.reduce((a,r)=>a+r.value,0)/todayGlc.length)} mg/dL`
+    : 'Sem medições hoje';
 
-  const last5Food = food.slice(0, 5).map(r =>
-    `  • ${formatDateTime(r.date)} — ${r.name} | ${r.kcal || '?'} kcal | Carbs: ${r.carbs || '?'}g`
-  ).join('\n') || '  Nenhum alimento registrado.';
+  const last3Glucose = glucose.slice(0, 3).map(r =>
+    `${r.value} mg/dL (${r.period || ''})`
+  ).join(', ') || 'nenhuma';
 
-  const last5Insulin = insulin.slice(0, 5).map(r =>
-    `  • ${formatDateTime(r.date)} — ${r.total} UI total | Glicose: ${r.glucose} mg/dL | Carbs: ${r.carbs}g`
-  ).join('\n') || '  Nenhuma dose registrada.';
+  return `Você é um assistente de saúde para diabéticos. Responda SEMPRE em português brasileiro.
+Seja direto e objetivo. Máximo 6 linhas. Sem introduções ou despedidas.
+NUNCA invente valores. Use apenas os dados fornecidos.
 
-  const todayGlcStr = todayGlc
-    ? `Hoje: ${todayGlc.count} medições | Média: ${todayGlc.avg} mg/dL | Min: ${todayGlc.min} | Max: ${todayGlc.max} | No alvo: ${todayGlc.inRangePct}%`
-    : 'Sem medições hoje.';
+PARÂMETROS DO USUÁRIO:
+Alvo: ${s.correctionTarget} mg/dL | Sensibilidade: ${s.insulinSensitivity} mg/dL/U | Carbo/UI: ${s.carbRatio}g/U
+Meta: ${s.targetMin}–${s.targetMax} mg/dL
 
-  const todayFoodStr = todayFood
-    ? `Hoje: ${todayFood.count} refeições | ${todayFood.kcal} kcal | Carbs: ${todayFood.carbs}g`
-    : 'Sem refeições registradas hoje.';
-
-  return `Você é um assistente direto e objetivo para diabéticos.
-Responda SEMPRE em português brasileiro.
-NUNCA faça perguntas desnecessárias. NUNCA peça confirmação. SEMPRE calcule e responda na hora com os dados disponíveis.
-Se faltar algum dado, assuma zero e avise no final em uma linha só.
-
-REGRAS DE RESPOSTA:
-- Comece SEMPRE com a resposta principal em negrito: dose, valor, conclusão
-- Depois mostre o cálculo em 2-3 linhas
-- Se couber refeição, dê o total arredondado com e sem comida
-- Máximo 6 linhas por resposta
-- PROIBIDO: "Como posso ajudar?", "Qual é sua dúvida?", "Você pode me dizer...?"
-- PROIBIDO: introduções, despedidas, perguntas de confirmação
-
-FÓRMULA DO PACIENTE:
-  Correção = arredondar((Glicose − 100) ÷ 40) → SEMPRE número inteiro
-  Refeição = arredondar(Carboidratos ÷ ${s.carbRatio}) → SEMPRE número inteiro
-  Total = Correção (mín. 0) + Refeição → SEMPRE número inteiro
-
-REGRA ABSOLUTA: NUNCA use decimais. Sempre arredonde para o inteiro mais próximo.
-
-DADOS DO PACIENTE:
-${s.name ? `Nome: ${s.name}` : ''}
-Meta: ${s.targetMin}–${s.targetMax} mg/dL | Alvo correção: ${s.correctionTarget} mg/dL | Sensibilidade: ${s.insulinSensitivity} | Carbo/UI: ${s.carbRatio}g
+DADOS ATUAIS:
 Tendência: ${trend}
 ${todayGlcStr}
-Últimas medições: ${last5Glucose}
-Hoje alimentação: ${todayFoodStr}
-Últimas refeições: ${last5Food}
-Últimas doses: ${last5Insulin}`;
+Últimas medições: ${last3Glucose}
+Últimas refeições: ${food.slice(0,3).map(r=>`${r.name} (${r.carbs}g carbs)`).join(', ') || 'nenhuma'}
+Últimas doses: ${insulin.slice(0,3).map(r=>`${r.total}U`).join(', ') || 'nenhuma'}`;
 }
 
 // ── NLP Auto-Register ─────────────────────────────────────────────────────
 
 async function tryAutoRegister(text) {
-  const parsed = parseGlucoseText(text);
+  const settings = getSettings();
+  const result = analyze(text, settings);
 
-  if (parsed.intent !== 'register_glucose' || !parsed.valid) {
-    return false;
+  if (result.intent === 'unknown') return false;
+
+  // Executar ações detectadas
+  for (const action of result.actions) {
+    if (action.type === 'create_glucose') {
+      await createGlucoseEntry(action.data);
+      window.dispatchEvent(new CustomEvent('glucose:registered', { detail: action.data }));
+    } else if (action.type === 'create_food') {
+      await createFoodEntry(action.data);
+      window.dispatchEvent(new CustomEvent('food:registered', { detail: action.data }));
+    } else if (action.type === 'create_insulin') {
+      await createInsulinEntry(action.data);
+      window.dispatchEvent(new CustomEvent('insulin:registered', { detail: action.data }));
+    }
   }
 
-  // Salva via API layer
-  await createGlucoseEntry({
-    value: parsed.value,
-    period: parsed.period,
-    notes: parsed.notes,
-    date: parsed.date
-  });
+  // Montar resposta compacta
+  const html = buildNlpResponseHtml(result, settings);
+  messages.push({ role: 'assistant', content: '', isNlpCard: true, html });
 
-  // Monta mensagem de confirmação visual
-  const s = getSettings();
-  const status = getGlucoseStatus(parsed.value, s);
-  const statusColors = {
-    'normal': 'success',
-    'high': 'warning',
-    'very-high': 'warning',
-    'low': 'danger',
-    'very-low': 'danger'
+  const toastMap = {
+    glucose: `Glicose ${result.glucose} mg/dL registrada`,
+    meal: `Refeição registrada — ${result.meal?.totals?.carbs || 0}g carbs`,
+    insulin: `${result.insulin} U registradas`
   };
-  const badgeClass = statusColors[status.key] || 'info';
-
-  const confirmHtml = `<span class="ai-register-confirm-value ${status.class}">${parsed.value} mg/dL</span><span class="ai-register-confirm-meta">${parsed.period}${parsed.notes ? ' · ' + parsed.notes : ''}</span>`;
-
-  messages.push({
-    role: 'assistant',
-    content: formatConfirmation(parsed),
-    isRegisterConfirm: true,
-    confirmHtml,
-    badgeClass,
-    statusLabel: status.label
-  });
-
-  showToast(`Glicose ${parsed.value} mg/dL registrada — ${parsed.period}`, 'success');
-
-  // Dispara evento para atualizar dashboard/glucose
-  window.dispatchEvent(new CustomEvent('glucose:registered', { detail: { value: parsed.value, period: parsed.period } }));
+  if (toastMap[result.intent]) showToast(toastMap[result.intent], 'success');
 
   return true;
+}
+
+function nlpIcon(type) {
+  return `<span class="nlp-icon nlp-icon--${type}">${NLP_ICONS[type]}</span>`;
+}
+
+function buildNlpResponseHtml(result, settings) {
+  const lines = [];
+
+  if (result.intent === 'glucose') {
+    const status = getGlucoseStatus(result.glucose, settings);
+    lines.push(`<div class="nlp-row">${nlpIcon('glucose')}<span class="nlp-label">Glicose registrada</span></div>`);
+    lines.push(`<div class="nlp-value nlp-value--glucose">${result.glucose} <small style="font-size:0.9rem;font-weight:600">mg/dL</small></div>`);
+    lines.push(`<div class="nlp-meta">${result.period} · ${status.label}</div>`);
+  }
+
+  if (result.intent === 'meal') {
+    const meal = result.meal;
+    const foodNames = meal.foods.length
+      ? meal.foods.map(f => f.name).join(', ')
+      : 'Refeição';
+    const ctx = getContext();
+    const lastGlucose = ctx.lastGlucose?.value || getList(KEYS.GLUCOSE)[0]?.value;
+
+    lines.push(`<div class="nlp-row">${nlpIcon('meal')}<span class="nlp-label">${meal.period} registrado</span></div>`);
+    lines.push(`<div class="nlp-foods">${foodNames}</div>`);
+
+    if (meal.unknown?.length) {
+      lines.push(`<div class="nlp-unknown">${meal.unknown.join(', ')} — porção padrão estimada</div>`);
+    }
+
+    lines.push(`<div class="nlp-divider"></div>`);
+
+    if (lastGlucose) {
+      lines.push(`<div class="nlp-row nlp-row--sm">${nlpIcon('glucose')}<span>Glicose: <strong>${lastGlucose} mg/dL</strong></span></div>`);
+    }
+
+    lines.push(`<div class="nlp-row nlp-row--sm">${nlpIcon('carbs')}<span>Carbs: <strong>${meal.totals.carbs}g</strong> · porção padrão</span></div>`);
+
+    if (lastGlucose && settings?.insulinSensitivity && settings?.carbRatio) {
+      const dose = calcDose(lastGlucose, meal.totals.carbs, settings);
+      if (dose) {
+        lines.push(`
+          <div class="nlp-dose-block">
+            <div class="nlp-dose-label">Sugestão calculada</div>
+            <div class="nlp-dose-value">${dose.total} U</div>
+            <div class="nlp-dose-detail">Correção ${dose.correction}U + refeição ${dose.meal}U · baseado nas suas configurações</div>
+          </div>`);
+      }
+    } else if (!lastGlucose) {
+      lines.push(`<div class="nlp-unknown">Informe sua glicose para calcular a dose.</div>`);
+    }
+
+    lines.push(`<div class="nlp-saved">${nlpIcon('ok')} Salvo no diário</div>`);
+  }
+
+  if (result.intent === 'insulin') {
+    const ctx = getContext();
+    const lastGlucose = ctx.lastGlucose?.value;
+    lines.push(`<div class="nlp-row">${nlpIcon('insulin')}<span class="nlp-label">Insulina registrada</span></div>`);
+    lines.push(`<div class="nlp-value nlp-value--insulin">${result.insulin} <small style="font-size:0.9rem;font-weight:600">U</small></div>`);
+    if (lastGlucose) lines.push(`<div class="nlp-meta">Glicose associada: ${lastGlucose} mg/dL</div>`);
+    lines.push(`<div class="nlp-saved">${nlpIcon('ok')} Salvo no diário</div>`);
+  }
+
+  return `<div class="nlp-card">${lines.join('')}</div>`;
 }
 
 // ── Render ────────────────────────────────────────────────────────────────
@@ -189,6 +181,37 @@ function escapeHtml(str) {
     .replace(/\n/g, '<br>');
 }
 
+// Ícone de gota de sangue — identidade clínica
+const AVATAR_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>`;
+
+// SVGs clínicos para os chips de sugestão
+const CHIP_ICONS = {
+  glucose: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>`,
+  meal:    `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>`,
+  insulin: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 2 4 4"/><path d="m17 7 1-1"/><path d="M3 21 12.5 11.5"/><path d="M9.5 14.5 11 13"/><path d="m14 6-8.5 8.5"/><path d="m6 14 4-4"/></svg>`,
+  trend:   `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`
+};
+
+// SVGs para os ícones dentro do NLP card
+const NLP_ICONS = {
+  glucose: `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>`,
+  meal:    `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>`,
+  insulin: `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 2 4 4"/><path d="m17 7 1-1"/><path d="M3 21 12.5 11.5"/><path d="M9.5 14.5 11 13"/><path d="m14 6-8.5 8.5"/><path d="m6 14 4-4"/></svg>`,
+  carbs:   `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>`,
+  dose:    `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
+  ok:      `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+};
+
+function chipHtml(type, label, example) {
+  return `<button class="ai-chip" type="button" data-text="${example}">
+    <div class="ai-chip-icon ai-chip-icon--${type}">${CHIP_ICONS[type]}</div>
+    <div class="ai-chip-text">
+      <span class="ai-chip-label">${label}</span>
+      <span class="ai-chip-example">${example}</span>
+    </div>
+  </button>`;
+}
+
 function renderMessages() {
   const container = document.getElementById('ai-messages');
   if (!container) return;
@@ -196,26 +219,29 @@ function renderMessages() {
   if (!messages.length) {
     container.innerHTML = `
       <div class="ai-welcome">
-        <div class="ai-avatar" aria-hidden="true">
-          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/><circle cx="18" cy="5" r="3" fill="currentColor" stroke="none"/></svg>
+        <div class="ai-welcome-icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/>
+            <circle cx="12" cy="9" r="2.5"/>
+          </svg>
         </div>
-        <p class="ai-welcome-title">Assistente Glicose AI</p>
-        <p class="ai-welcome-sub">Analiso seus dados reais. Calcule doses, registre glicose por texto livre ou pergunte sobre tendências.</p>
-        <div class="ai-suggestions">
-          ${[
-            '🩸 120 antes do almoço',
-            '💉 Calcule minha dose agora',
-            '📊 Como está minha glicose hoje?',
-            '🔮 Vai subir ou baixar?',
-            '🥗 Analise minha dieta de hoje',
-            '📈 Explique minha tendência'
-          ].map(s => `<button class="ai-suggestion" type="button">${s}</button>`).join('')}
+        <p class="ai-welcome-title">Assistente Clínico</p>
+        <p class="ai-welcome-sub">Registre glicose, refeições e insulina em linguagem natural. Tudo salvo automaticamente.</p>
+        <div class="ai-chips">
+          <div class="ai-chip-group">
+            ${chipHtml('glucose', 'Glicose', '180 antes do almoço')}
+            ${chipHtml('meal', 'Refeição', 'Comi arroz, feijão e carne')}
+          </div>
+          <div class="ai-chip-group">
+            ${chipHtml('insulin', 'Insulina', 'Tomei 8 unidades')}
+            ${chipHtml('trend', 'Análise', 'Como está minha glicose hoje?')}
+          </div>
         </div>
       </div>`;
 
-    container.querySelectorAll('.ai-suggestion').forEach(btn => {
+    container.querySelectorAll('.ai-chip').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.getElementById('ai-input').value = btn.textContent.replace(/^[^\s]+\s/, '');
+        document.getElementById('ai-input').value = btn.dataset.text;
         handleSend();
       });
     });
@@ -223,21 +249,16 @@ function renderMessages() {
   }
 
   container.innerHTML = messages.map(m => {
-    if (m.isRegisterConfirm) {
+    if (m.isNlpCard) {
       return `
         <div class="ai-msg ai-msg--assistant">
-          <div class="ai-msg-avatar" aria-hidden="true">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/><circle cx="18" cy="5" r="3" fill="currentColor" stroke="none"/></svg>
-          </div>
-          <div class="ai-msg-bubble ai-register-confirm">
-            ${m.confirmHtml}
-            <span class="badge badge-${m.badgeClass}" style="margin-top:6px;display:inline-flex;">${m.statusLabel}</span>
-          </div>
+          <div class="ai-msg-avatar">${AVATAR_SVG}</div>
+          <div class="ai-msg-bubble ai-msg-bubble--card">${m.html}</div>
         </div>`;
     }
     return `
       <div class="ai-msg ai-msg--${m.role}">
-        ${m.role === 'assistant' ? `<div class="ai-msg-avatar" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/><circle cx="18" cy="5" r="3" fill="currentColor" stroke="none"/></svg></div>` : ''}
+        ${m.role === 'assistant' ? `<div class="ai-msg-avatar">${AVATAR_SVG}</div>` : ''}
         <div class="ai-msg-bubble">${escapeHtml(m.content)}</div>
       </div>`;
   }).join('');
@@ -245,7 +266,7 @@ function renderMessages() {
   if (isLoading) {
     container.innerHTML += `
       <div class="ai-msg ai-msg--assistant">
-        <div class="ai-msg-avatar" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/><circle cx="18" cy="5" r="3" fill="currentColor" stroke="none"/></svg></div>
+        <div class="ai-msg-avatar">${AVATAR_SVG}</div>
         <div class="ai-msg-bubble ai-typing"><span></span><span></span><span></span></div>
       </div>`;
   }
@@ -285,7 +306,7 @@ async function sendMessage(userText) {
         model: MODEL,
         messages: [
           { role: 'system', content: buildSystemPrompt() },
-          ...messages.filter(m => !m.isRegisterConfirm)
+          ...messages.filter(m => !m.isNlpCard)
         ],
         temperature: 0.4,
         max_tokens: 1024

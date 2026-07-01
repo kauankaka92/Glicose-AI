@@ -1,4 +1,5 @@
-/* AI Chat Page */
+/* ── AI Clinical Assistant ─────────────────────────────────────────────── */
+
 #page-ai {
   display: none;
   flex-direction: column;
@@ -14,31 +15,61 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px 0;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.ai-topbar-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ai-topbar-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-light);
+  color: var(--danger);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
 .ai-topbar-title {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--text-muted);
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.ai-topbar-status {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  font-size: 0.6875rem;
+  color: var(--success);
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 .ai-status-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--success);
-  box-shadow: 0 0 6px var(--success);
   animation: statusPulse 2.5s ease-in-out infinite;
 }
 
 @keyframes statusPulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  50% { opacity: 0.4; }
 }
 
 /* Messages area */
@@ -48,117 +79,136 @@
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   scroll-behavior: smooth;
 }
 
-/* Welcome screen */
+/* ── Welcome screen ─────────────────────────────────────────────────────── */
+
 .ai-welcome {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 28px 16px 16px;
-  gap: 8px;
+  padding: 24px 8px 8px;
+  gap: 0;
   margin: auto 0;
 }
 
-.ai-avatar {
-  width: 68px;
-  height: 68px;
-  border-radius: var(--radius-full);
-  background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
-  color: white;
+.ai-welcome-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: var(--danger-light);
+  color: var(--danger);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 8px;
-  box-shadow: var(--shadow-glow), 0 0 0 10px var(--accent-subtle);
+  margin-bottom: 16px;
 }
 
 .ai-welcome-title {
-  font-size: 1.125rem;
+  font-size: 1.0625rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text-primary);
+  margin-bottom: 6px;
 }
 
 .ai-welcome-sub {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   color: var(--text-secondary);
-  max-width: 280px;
+  max-width: 260px;
   line-height: 1.55;
+  margin-bottom: 24px;
 }
 
-.ai-suggestions {
+/* Quick action chips */
+.ai-chips {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
-  justify-content: center;
-  margin-top: 16px;
+  width: 100%;
+  max-width: 340px;
 }
 
-.ai-suggestion {
-  padding: 8px 14px;
-  border-radius: var(--radius-full);
-  background: var(--surface-2);
-  border: 1.5px solid var(--border-strong);
+.ai-chip-group {
+  display: flex;
+  gap: 8px;
+}
+
+.ai-chip {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
   color: var(--text-secondary);
   font-size: 0.8125rem;
   font-weight: 500;
   cursor: pointer;
   transition: all var(--transition);
   text-align: left;
+  line-height: 1.3;
 }
 
-.ai-suggestion:hover {
-  background: var(--accent-light);
-  border-color: var(--accent);
-  color: var(--accent);
-  transform: translateY(-1px);
+.ai-chip:hover {
+  border-color: var(--danger);
+  color: var(--text-primary);
+  background: var(--danger-light);
 }
 
-/* NLP Quick Register Banner */
-.ai-nlp-banner {
+.ai-chip-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-xs);
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  background: var(--accent-subtle);
-  border: 1px solid var(--accent-light);
-  border-radius: var(--radius-md);
-  margin: 0 16px 12px;
+  justify-content: center;
   flex-shrink: 0;
+  color: white;
 }
 
-.ai-nlp-banner-icon {
-  font-size: 1.125rem;
-  flex-shrink: 0;
+.ai-chip-icon--glucose { background: var(--danger); }
+.ai-chip-icon--meal    { background: var(--success); }
+.ai-chip-icon--insulin { background: var(--info); }
+.ai-chip-icon--trend   { background: var(--warning); }
+
+.ai-chip-text {
+  display: flex;
+  flex-direction: column;
 }
 
-.ai-nlp-banner-text {
+.ai-chip-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 1px;
+}
+
+.ai-chip-example {
   font-size: 0.8125rem;
   color: var(--text-secondary);
-  line-height: 1.4;
 }
 
-.ai-nlp-banner-text strong {
-  color: var(--accent);
-  font-weight: 600;
-}
+/* ── Messages ───────────────────────────────────────────────────────────── */
 
-/* Messages */
 .ai-msg {
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  max-width: 88%;
-  animation: msgIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  max-width: 90%;
+  animation: msgIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes msgIn {
-  from { opacity: 0; transform: translateY(10px) scale(0.96); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .ai-msg--user {
@@ -169,11 +219,11 @@
 .ai-msg--assistant { align-self: flex-start; }
 
 .ai-msg-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-full);
-  background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
-  color: white;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-xs);
+  background: var(--danger-light);
+  color: var(--danger);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -181,58 +231,172 @@
 }
 
 .ai-msg-bubble {
-  padding: 11px 15px;
-  border-radius: 18px;
-  font-size: 0.9375rem;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 0.9rem;
   line-height: 1.55;
   word-break: break-word;
 }
 
 .ai-msg--user .ai-msg-bubble {
-  background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+  background: var(--accent);
   color: white;
-  border-bottom-right-radius: 5px;
+  border-bottom-right-radius: 4px;
 }
 
 .ai-msg--assistant .ai-msg-bubble {
   background: var(--bg-card);
   color: var(--text-primary);
   border: 1px solid var(--border-strong);
-  border-bottom-left-radius: 5px;
+  border-bottom-left-radius: 4px;
 }
 
-/* Glucose register confirmation bubble */
-.ai-msg-bubble.ai-register-confirm {
-  background: var(--success-light);
-  border-color: rgba(16, 217, 138, 0.25);
+/* ── NLP Card — registro automático ─────────────────────────────────────── */
+
+.ai-msg-bubble--card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  padding: 14px 16px;
+  border-radius: 16px;
+  border-bottom-left-radius: 4px;
+  min-width: 230px;
+  max-width: 300px;
+}
+
+.nlp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.nlp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
-.ai-register-confirm-value {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--success);
-  letter-spacing: -0.03em;
-  display: block;
-  margin-bottom: 4px;
-}
-
-.ai-register-confirm-meta {
+.nlp-row--sm {
   font-size: 0.8125rem;
+  font-weight: 400;
   color: var(--text-secondary);
 }
 
-/* Typing indicator */
+.nlp-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: white;
+}
+
+.nlp-icon--glucose { background: var(--danger); }
+.nlp-icon--meal    { background: var(--success); }
+.nlp-icon--insulin { background: var(--info); }
+.nlp-icon--carbs   { background: var(--warning); }
+.nlp-icon--dose    { background: var(--accent); }
+.nlp-icon--ok      { background: var(--success); }
+
+.nlp-label {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.nlp-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  padding-left: 2px;
+}
+
+.nlp-value--glucose { color: var(--danger); }
+.nlp-value--insulin { color: var(--info); }
+
+.nlp-foods {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  padding-left: 30px;
+  line-height: 1.5;
+}
+
+.nlp-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding-left: 30px;
+}
+
+.nlp-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 2px 0;
+}
+
+.nlp-dose-block {
+  background: var(--accent-subtle);
+  border: 1px solid var(--accent-light);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-top: 2px;
+}
+
+.nlp-dose-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: -0.03em;
+}
+
+.nlp-dose-label {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.nlp-dose-detail {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.nlp-unknown {
+  font-size: 0.75rem;
+  color: var(--warning);
+  padding-left: 30px;
+  line-height: 1.4;
+}
+
+.nlp-saved {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--success);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* ── Typing indicator ───────────────────────────────────────────────────── */
+
 .ai-typing {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 14px 16px;
+  padding: 12px 14px;
 }
 
 .ai-typing span {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--text-muted);
   animation: aiPulse 1.2s ease-in-out infinite;
@@ -242,11 +406,12 @@
 .ai-typing span:nth-child(3) { animation-delay: 0.4s; }
 
 @keyframes aiPulse {
-  0%, 60%, 100% { transform: translateY(0); opacity: 0.35; }
-  30% { transform: translateY(-5px); opacity: 1; }
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.3; }
+  30% { transform: translateY(-4px); opacity: 1; }
 }
 
-/* Input bar */
+/* ── Input bar ──────────────────────────────────────────────────────────── */
+
 .ai-input-bar {
   padding: 10px 12px 12px;
   border-top: 1px solid var(--border);
@@ -254,7 +419,7 @@
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 8px;
   flex-shrink: 0;
 }
@@ -263,16 +428,28 @@
   flex: 1;
   background: var(--bg-input);
   border: 1.5px solid var(--border-strong);
-  border-radius: 22px;
+  border-radius: var(--radius-full);
   display: flex;
   align-items: center;
-  padding: 0 14px;
+  padding: 0 14px 0 10px;
+  gap: 8px;
   transition: border-color var(--transition), box-shadow var(--transition);
 }
 
 .ai-input-wrap:focus-within {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-light);
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-light);
+}
+
+.ai-input-icon {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.ai-input-wrap:focus-within .ai-input-icon {
+  color: var(--danger);
 }
 
 #ai-input {
@@ -280,11 +457,9 @@
   background: transparent;
   border: none;
   outline: none;
-  padding: 12px 0;
-  font-size: 0.9375rem;
+  padding: 11px 0;
+  font-size: 0.9rem;
   color: var(--text-primary);
-  resize: none;
-  max-height: 120px;
   line-height: 1.4;
 }
 
@@ -292,23 +467,23 @@
 #ai-input:disabled { opacity: 0.5; }
 
 #ai-send {
-  width: 46px;
-  height: 46px;
+  width: 42px;
+  height: 42px;
   border-radius: var(--radius-full);
-  background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+  background: var(--danger);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all var(--transition-spring);
-  box-shadow: 0 2px 12px var(--accent-glow);
+  transition: all var(--transition);
 }
 
 #ai-send:hover:not(:disabled) {
-  transform: scale(1.08);
-  box-shadow: 0 4px 20px var(--accent-glow);
+  background: var(--danger);
+  filter: brightness(1.1);
+  transform: scale(1.06);
 }
 
-#ai-send:disabled { opacity: 0.45; pointer-events: none; }
-#ai-send svg { width: 20px; height: 20px; }
+#ai-send:disabled { opacity: 0.4; pointer-events: none; }
+#ai-send svg { width: 17px; height: 17px; }

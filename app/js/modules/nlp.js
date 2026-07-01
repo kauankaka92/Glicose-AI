@@ -1,91 +1,119 @@
 /**
- * NLP Engine — interpreta linguagem natural para registros de glicose.
- * Funciona 100% offline, sem dependência de API externa.
+ * NLP Engine inteligente para saúde.
  */
 
-// ── Mapeamentos ───────────────────────────────────────────────────────────
+import { parseFoodList } from './foodDatabase.js';
+import { getList, KEYS } from './storage.js';
+import { nowISO } from './utils.js';
+import { getContext, setLastGlucose, setLastFood, setLastInsulin } from './contextManager.js';
 
-const PERIOD_MAP = [
-  { keys: ['jejum', 'acordar', 'acordei', 'manhã', 'manha', 'cedo', 'levantei'], value: 'Jejum' },
-  { keys: ['pré-almoço', 'pre-almoco', 'antes do almoço', 'antes almoço', 'antes almoco'], value: 'Pré-almoço' },
-  { keys: ['pós-almoço', 'pos-almoco', 'depois do almoço', 'depois almoço', 'apos almoco', 'após almoço'], value: 'Pós-almoço' },
-  { keys: ['tarde', 'lanche', 'meio da tarde'], value: 'Tarde' },
-  { keys: ['jantar', 'janta', 'noite', 'antes do jantar', 'antes jantar', 'pré-jantar', 'pre-jantar'], value: 'Jantar' },
-  { keys: ['pós-jantar', 'pos-jantar', 'depois do jantar', 'depois jantar', 'após jantar', 'apos jantar'], value: 'Jantar' },
-  { keys: ['café', 'cafe', 'café da manhã', 'cafe da manha', 'antes do café', 'antes cafe', 'pós-café', 'pos-cafe', 'depois do café', 'depois cafe'], value: 'Jejum' },
-  { keys: ['dormir', 'deitar', 'antes de dormir', 'antes dormir', 'hora de dormir'], value: 'Madrugada' },
-  { keys: ['madrugada', 'noite tarde', 'meia noite', 'meia-noite'], value: 'Madrugada' },
-  { keys: ['exercício', 'exercicio', 'treino', 'academia', 'corrida', 'caminhada'], value: 'Tarde' },
+// ── Padrões de detecção ───────────────────────────────────────────────────
+
+const GLUCOSE_PATTERNS = [
+  /(?:glicose|glicemia|medi[cç][aã]o|medida|a[IÍ]car|acucar)[:\s]*(\d{2,3})/i,
+  /(?:tava|estava|está|esta|deu|foi|marca|marcou)[:\s]*(\d{2,3})/i,
+  /(\d{2,3})\s*(?:mg\/?dl|mgdl)?\s*(?:de\s+)?glicose/i,
+  /(?:glicose|glicemia)[:\s]*(\d{2,3})/i,
 ];
 
-const BEFORE_AFTER_MAP = [
-  { keys: ['antes', 'pré', 'pre', 'antes do', 'antes da', 'antes de'], prefix: 'Antes' },
-  { keys: ['depois', 'após', 'apos', 'pós', 'pos', 'depois do', 'depois da', 'depois de'], prefix: 'Depois' },
+const INSULIN_PATTERNS = [
+  /(?:tomei|apliquei|usei|coloquei)[:\s]*(\d{1,2})\s*(?:u|unidade|unidades)?/i,
+  /(\d{1,2})\s*(?:u|unidade|unidades)(?:\s+de\s+insulina)?/i,
+  /insulina[:\s]*(\d{1,2})/i,
 ];
 
-const NOISE_WORDS = [
-  'minha', 'meu', 'a', 'o', 'de', 'da', 'do', 'e', 'é', 'foi', 'tava', 'estava',
-  'ficou', 'deu', 'deu', 'registrar', 'registra', 'anotar', 'anota', 'salvar',
-  'glicose', 'glicemia', 'medição', 'medicao', 'medida', 'resultado', 'valor',
-  'açúcar', 'acucar', 'sangue', 'mg', 'dl', 'mg/dl', 'mgdl',
+const MEAL_TRIGGERS = [
+  'comi', 'almocei', 'jantei', 'jantar', 'almoço', 'almoco', 'lanche', 'café', 'cafe',
+  'ceia', 'café da manhã', 'cafe da manha', 'sobremesa', 'churrasco', 'pizzada'
 ];
 
-// ── Extração de valor numérico ────────────────────────────────────────────
+const PERIOD_MAP = {
+  'jejum': 'Jejum', 'acordar': 'Jejum', 'acordei': 'Jejum', 'manhã': 'Jejum', 'manha': 'Jejum',
+  'pré-almoço': 'Pré-almoço', 'pre-almoco': 'Pré-almoço', 'antes do almoço': 'Pré-almoço',
+  'pós-almoço': 'Pós-almoço', 'apos almoco': 'Pós-almoço', 'depois do almoço': 'Pós-almoço',
+  'almoço': 'Pós-almoço', 'almoco': 'Pós-almoço',
+  'tarde': 'Tarde', 'lanche da tarde': 'Tarde',
+  'jantar': 'Jantar', 'jantei': 'Jantar', 'noite': 'Jantar',
+  'madrugada': 'Madrugada', 'dormir': 'Madrugada', 'deitar': 'Madrugada',
+};
 
-function extractValue(text) {
-  // Padrão: número isolado ou com mg/dL
-  const patterns = [
-    /\b(\d{2,3})\s*(?:mg\/?dl|mgdl)?\b/gi,
-    /glicose\s+(?:de\s+)?(\d{2,3})/i,
-    /(?:tava|estava|ficou|deu|é|foi)\s+(?:em\s+)?(\d{2,3})/i,
-    /(\d{2,3})\s+(?:mg|de glicose)/i,
-  ];
+// ── Extração de valor de glicose ───────────────────────────────────────────
 
-  for (const pattern of patterns) {
+function extractGlucoseValue(text) {
+  for (const pattern of GLUCOSE_PATTERNS) {
     const match = text.match(pattern);
     if (match) {
-      const num = parseInt(match[1] || match[0].replace(/\D/g, ''), 10);
-      if (num >= 20 && num <= 600) return num;
+      const val = parseInt(match[1], 10);
+      if (val >= 20 && val <= 600) return val;
     }
   }
 
-  // Fallback: primeiro número no range válido
-  const nums = text.match(/\b\d{2,3}\b/g);
-  if (nums) {
-    for (const n of nums) {
-      const v = parseInt(n, 10);
-      if (v >= 20 && v <= 600) return v;
-    }
+  // Apenas número sozinho (contexto de glicose)
+  const soloNum = text.match(/^(\d{2,3})$/);
+  if (soloNum) {
+    const val = parseInt(soloNum[1], 10);
+    if (val >= 20 && val <= 600) return val;
   }
 
   return null;
 }
 
-// ── Extração de período ───────────────────────────────────────────────────
+// ── Extração de dose de insulina ───────────────────────────────────────────
 
-function extractPeriod(text) {
+function extractInsulinDose(text) {
+  for (const pattern of INSULIN_PATTERNS) {
+    const match = text.match(pattern);
+    if (match) {
+      const val = parseInt(match[1], 10);
+      if (val >= 1 && val <= 100) return val;
+    }
+  }
+  return null;
+}
+
+// ── Detecção de refeição ───────────────────────────────────────────────────
+
+function detectMeal(text) {
   const lower = text.toLowerCase();
+  const hasTrigger = MEAL_TRIGGERS.some(t => lower.includes(t));
 
-  // Detecta antes/depois
-  let prefix = '';
-  for (const { keys, prefix: p } of BEFORE_AFTER_MAP) {
-    if (keys.some(k => lower.includes(k))) {
-      prefix = p;
+  if (!hasTrigger) return null;
+
+  const parsed = parseFoodList(text);
+
+  if (parsed.foods.length === 0 && !hasTrigger) return null;
+
+  // Calcular totais
+  let totalCarbs = 0, totalKcal = 0, totalProtein = 0, totalFat = 0;
+
+  parsed.foods.forEach(f => {
+    totalCarbs += f.carbs;
+    totalKcal += f.kcal;
+    totalProtein += f.protein;
+    totalFat += f.fat;
+  });
+
+  // Detectar período
+  let period = inferPeriod();
+  for (const [key, value] of Object.entries(PERIOD_MAP)) {
+    if (lower.includes(key)) {
+      period = value;
       break;
     }
   }
 
-  // Detecta contexto de refeição/momento
-  for (const { keys, value } of PERIOD_MAP) {
-    if (keys.some(k => lower.includes(k))) {
-      if (prefix && (value === 'Jejum' || value === 'Pré-almoço' || value === 'Jantar' || value === 'Tarde')) {
-        return value;
-      }
-      return value;
-    }
-  }
+  return {
+    type: 'meal',
+    foods: parsed.foods,
+    unknown: parsed.unknown,
+    totals: { carbs: totalCarbs, kcal: totalKcal, protein: totalProtein, fat: totalFat },
+    period
+  };
+}
 
-  // Inferência por hora do dia
+// ── Detecção de contexto temporal ───────────────────────────────────────────
+
+function inferPeriod() {
   const h = new Date().getHours();
   if (h >= 5 && h < 10) return 'Jejum';
   if (h >= 10 && h < 12) return 'Pré-almoço';
@@ -95,115 +123,82 @@ function extractPeriod(text) {
   return 'Madrugada';
 }
 
-// ── Extração de observações ───────────────────────────────────────────────
+// ── Análise principal ──────────────────────────────────────────────────────
 
-function extractNotes(text) {
-  const lower = text.toLowerCase();
-  const notePatterns = [
-    /(?:obs|observação|observacao|nota|anotação|anotacao)[:\s]+(.+)/i,
-    /(?:após|apos|depois de|depois do)\s+(?:exercício|exercicio|treino|academia|corrida|caminhada)/i,
-    /(?:em jejum|jejum de \d+h?)/i,
-    /(?:com sintoma|sintoma|sintomas)[:\s]+(.+)/i,
-  ];
-
-  const notes = [];
-  for (const p of notePatterns) {
-    const m = text.match(p);
-    if (m) notes.push(m[1] || m[0]);
-  }
-
-  // Detecta contextos especiais
-  if (lower.includes('exercício') || lower.includes('exercicio') || lower.includes('treino')) {
-    notes.push('Após exercício');
-  }
-  if (lower.match(/jejum de (\d+)\s*h/)) {
-    const m = lower.match(/jejum de (\d+)\s*h/);
-    notes.push(`Jejum de ${m[1]}h`);
-  }
-
-  return notes.length ? notes.join(', ') : null;
-}
-
-// ── Validação e normalização ──────────────────────────────────────────────
-
-function validateAndNormalize(parsed) {
-  const errors = [];
-
-  if (!parsed.value) {
-    errors.push('Valor de glicose não encontrado');
-  } else if (parsed.value < 20) {
-    errors.push('Valor muito baixo (mínimo 20 mg/dL)');
-  } else if (parsed.value > 600) {
-    errors.push('Valor muito alto (máximo 600 mg/dL)');
-  }
-
-  return { valid: errors.length === 0, errors };
-}
-
-// ── Detecção de intenção ──────────────────────────────────────────────────
-
-function detectIntent(text) {
-  const lower = text.toLowerCase().trim();
-
-  // Intenção de registrar glicose
-  const glucoseIntent = [
-    /\b\d{2,3}\b/,
-    /glicose|glicemia|açúcar|acucar|medição|medicao/i,
-    /tava|estava|ficou|deu|é|foi/i,
-  ];
-
-  const hasNumber = /\b\d{2,3}\b/.test(lower);
-  const hasGlucoseContext = /glicose|glicemia|açúcar|acucar|medição|medicao|mg|dl/i.test(lower);
-  const hasTimeContext = PERIOD_MAP.some(({ keys }) => keys.some(k => lower.includes(k)));
-
-  if (hasNumber && (hasGlucoseContext || hasTimeContext)) {
-    return 'register_glucose';
-  }
-
-  // Apenas número — provavelmente glicose
-  if (hasNumber && lower.replace(/\s/g, '').length <= 5) {
-    return 'register_glucose';
-  }
-
-  return 'chat';
-}
-
-// ── Parser principal ──────────────────────────────────────────────────────
-
-function parseGlucoseText(text) {
-  const value = extractValue(text);
-  const period = extractPeriod(text);
-  const notes = extractNotes(text);
-  const { valid, errors } = validateAndNormalize({ value });
-
-  return {
-    intent: detectIntent(text),
-    value,
-    period,
-    date: new Date().toISOString(),
-    notes,
-    valid,
-    errors,
-    raw: text.trim()
-  };
-}
-
-// ── Formatação de confirmação ─────────────────────────────────────────────
-
-function formatConfirmation(parsed) {
-  const statusMap = {
-    'Jejum': '🌅',
-    'Pré-almoço': '🍽️',
-    'Pós-almoço': '🍽️',
-    'Tarde': '☀️',
-    'Jantar': '🌙',
-    'Madrugada': '🌙',
+function analyze(text, settings) {
+  const result = {
+    intent: 'unknown',
+    glucose: null,
+    insulin: null,
+    meal: null,
+    period: null,
+    response: null,
+    actions: []
   };
 
-  const icon = statusMap[parsed.period] || '💉';
-  let msg = `${icon} Glicose registrada: **${parsed.value} mg/dL** — ${parsed.period}`;
-  if (parsed.notes) msg += `\n📝 ${parsed.notes}`;
-  return msg;
+  // 1. Detectar glicose
+  const glucoseVal = extractGlucoseValue(text);
+  if (glucoseVal) {
+    result.glucose = glucoseVal;
+    result.intent = 'glucose';
+    result.period = inferPeriod();
+
+    setLastGlucose(glucoseVal, result.period);
+    result.actions.push({
+      type: 'create_glucose',
+      data: { value: glucoseVal, period: result.period, date: nowISO() }
+    });
+
+    return result;
+  }
+
+  // 2. Detectar insulina
+  const insulinVal = extractInsulinDose(text);
+  if (insulinVal) {
+    result.insulin = insulinVal;
+    result.intent = 'insulin';
+
+    const ctx = getContext();
+    setLastInsulin(insulinVal, ctx.lastGlucose?.value, ctx.lastFood?.carbs);
+    result.actions.push({
+      type: 'create_insulin',
+      data: { dose: insulinVal, glucose: ctx.lastGlucose?.value, date: nowISO() }
+    });
+
+    return result;
+  }
+
+  // 3. Detectar refeição
+  const meal = detectMeal(text);
+  if (meal) {
+    result.meal = meal;
+    result.intent = 'meal';
+    result.period = meal.period;
+
+    setLastFood(meal.foods, meal.totals);
+
+    // Buscar última glicose do contexto ou do storage
+    const ctx = getContext();
+    let lastGlucose = ctx.lastGlucose?.value;
+    if (!lastGlucose) {
+      const glucoseRecords = getList(KEYS.GLUCOSE);
+      if (glucoseRecords.length) lastGlucose = glucoseRecords[0].value;
+    }
+
+    result.actions.push({
+      type: 'create_food',
+      data: {
+        name: meal.foods.map(f => f.name).join(', '),
+        carbs: meal.totals.carbs,
+        kcal: meal.totals.kcal,
+        protein: meal.totals.protein,
+        fat: meal.totals.fat,
+        date: nowISO()
+      }
+    });
+  }
+
+  return result;
 }
 
-export { parseGlucoseText, detectIntent, formatConfirmation };
+export { analyze, extractGlucoseValue, extractInsulinDose, detectMeal, inferPeriod };
