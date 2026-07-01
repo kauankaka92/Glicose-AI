@@ -1,20 +1,17 @@
 {
-  "public": true,
   "rewrites": [
-    { "source": "/favicon.ico", "destination": "/app/icons/icon-192.svg" },
-    { "source": "/", "destination": "/index.html" }
+    { "source": "/((?!api|css|js|pages|icons|sw.js|manifest.json|favicon.ico).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
-      "source": "/app/manifest.json",
+      "source": "/manifest.json",
       "headers": [
         { "key": "Content-Type", "value": "application/manifest+json" },
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Cache-Control", "value": "public, max-age=86400" }
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
       ]
     },
     {
-      "source": "/app/sw.js",
+      "source": "/sw.js",
       "headers": [
         { "key": "Content-Type", "value": "application/javascript" },
         { "key": "Service-Worker-Allowed", "value": "/" },
@@ -22,7 +19,7 @@
       ]
     },
     {
-      "source": "/app/js/(.*)\\.js",
+      "source": "/js/(.*)",
       "headers": [
         { "key": "Content-Type", "value": "application/javascript" }
       ]
@@ -33,12 +30,6 @@
         { "key": "Access-Control-Allow-Origin", "value": "*" },
         { "key": "Access-Control-Allow-Methods", "value": "POST, OPTIONS" },
         { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
-      ]
-    },
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" }
       ]
     }
   ]
