@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="Monitoramento inteligente de glicose para diabéticos" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Glicose AI" />
+  <title>Glicose AI</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="css/themes.css" />
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/glucose.css" />
+  <link rel="stylesheet" href="css/food.css" />
+  <link rel="stylesheet" href="css/insulin.css" />
+  <link rel="stylesheet" href="css/charts.css" />
+  <link rel="stylesheet" href="css/calendar.css" />
+  <link rel="stylesheet" href="css/reminders.css" />
+  <link rel="stylesheet" href="css/settings.css" />
+</head>
+<body>
+
+  <!-- Splash Screen -->
+  <div id="splash" role="status" aria-label="Carregando Glicose AI">
+    <div class="splash-logo" aria-hidden="true">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+        <path d="M8 12h8M12 8v8"/>
+      </svg>
+    </div>
+    <h1 class="splash-title">Glicose AI</h1>
+    <p class="splash-subtitle">Monitoramento inteligente</p>
+  </div>
+
+  <!-- App Shell -->
+  <div id="app">
+
+    <!-- Header -->
+    <header class="app-header" role="banner">
+      <span class="header-title" id="header-title">Glicose AI</span>
+      <div class="header-actions">
+        <button class="btn-icon" id="btn-theme" aria-label="Alternar tema" type="button">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Pages Container -->
+    <main class="app-main" id="pages-container">
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="app-nav" role="navigation" aria-label="Navegação principal">
+      <button class="nav-item" data-nav="dashboard" aria-label="Dashboard" type="button">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+        <span class="nav-label">Início</span>
+      </button>
+
+      <button class="nav-item" data-nav="glucose" aria-label="Glicose" type="button">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/>
+          <circle cx="12" cy="9" r="2.5"/>
+        </svg>
+        <span class="nav-label">Glicose</span>
+      </button>
+
+      <button class="nav-item" data-nav="food" aria-label="Alimentação" type="button">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/>
+        </svg>
+        <span class="nav-label">Dieta</span>
+      </button>
+
+      <button class="nav-item" data-nav="charts" aria-label="Gráficos" type="button">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        <span class="nav-label">Gráficos</span>
+      </button>
+
+      <button class="nav-item" data-nav="settings" aria-label="Configurações" type="button">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span class="nav-label">Config</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" aria-live="polite" aria-atomic="false"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

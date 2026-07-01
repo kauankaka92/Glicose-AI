@@ -1,0 +1,1 @@
+FASE 7: Calendário com visão diária e acesso aos registros.
