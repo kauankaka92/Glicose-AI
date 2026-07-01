@@ -38,7 +38,9 @@ function latestGlucose() {
 }
 
 function fmt(n) {
-  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, '');
+  const v = parseFloat(n);
+  if (!isFinite(v)) return '0';
+  return Number.isInteger(v) ? String(v) : v.toFixed(2).replace(/\.?0+$/, '');
 }
 
 /* ── render: disclaimer ── */
