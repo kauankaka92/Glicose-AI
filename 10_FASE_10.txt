@@ -1,1 +1,0 @@
-FASE 10: Auditoria completa do projeto, corrigindo bugs, duplicações, acessibilidade, performance, UX e responsividade até não restarem problemas.

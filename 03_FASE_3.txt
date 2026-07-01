@@ -1,1 +1,0 @@
-FASE 3: Registro completo de glicose (CRUD), filtros, pesquisa, ordenação, observações, períodos do dia, validações.

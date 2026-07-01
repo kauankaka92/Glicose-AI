@@ -1,1 +1,0 @@
-FASE 5: Configuração de cálculo de insulina usando parâmetros definidos pelo usuário. Mostrar todos os cálculos e avisar que o app apenas aplica a fórmula configurada pelo usuário.

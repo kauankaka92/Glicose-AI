@@ -1,1 +1,0 @@
-FASE 4: Diário alimentar com CRUD, macros, calorias, foto opcional, categorias, pesquisa e filtros.

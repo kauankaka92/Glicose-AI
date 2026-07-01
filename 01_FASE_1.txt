@@ -1,1 +1,0 @@
-FASE 1: Criar a fundação do projeto (HTML/CSS/JS/PWA/LocalStorage), estrutura de pastas, manifest, service worker, temas claro/escuro, arquitetura modular, design responsivo, offline first. Concluir apenas quando tudo estiver funcional e auditado.
