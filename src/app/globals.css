@@ -420,6 +420,16 @@ html {
   }
 }
 
+/* Cursor de digitação */
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
 /* Bounce for notification dots */
 @keyframes bounce {
   0%, 80%, 100% {

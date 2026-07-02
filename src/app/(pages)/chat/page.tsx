@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Card, Button, Input, Badge } from '@/components/UI'
-import { ChatAction, ChatMessage as ChatMessageType } from '@/lib/types'
+import { Card, Button, Badge } from '@/components/UI'
+import { ChatAction } from '@/lib/types'
 import {
   getCurrentConversation,
   createConversation,
@@ -19,6 +19,7 @@ interface Message {
   content: string
   timestamp: string
   actions?: ChatAction[]
+  isTyping?: boolean
 }
 
 export default function Chat() {
@@ -29,6 +30,7 @@ export default function Chat() {
   const [currentConversationId, setCurrentId] = useState<string | null>(null)
   const [showSidebar, setShowSidebar] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const typewriterRef = useRef<NodeJS.Timeout | null>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -40,6 +42,9 @@ export default function Chat() {
 
   useEffect(() => {
     loadConversations()
+    return () => {
+      if (typewriterRef.current) clearInterval(typewriterRef.current)
+    }
   }, [])
 
   const loadConversations = () => {
@@ -89,6 +94,46 @@ export default function Chat() {
     }
   }
 
+  const typeMessage = (fullText: string, messageId: string, actions?: ChatAction[]) => {
+    const chars = fullText.split('')
+    let currentIndex = 0
+    const typingSpeed = 15
+
+    const assistantMessage: Message = {
+      id: messageId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date().toISOString(),
+      actions,
+      isTyping: true,
+    }
+
+    setMessages((prev) => [...prev, assistantMessage])
+
+    typewriterRef.current = setInterval(() => {
+      if (currentIndex < chars.length) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === messageId
+              ? { ...msg, content: msg.content + chars[currentIndex] }
+              : msg
+          )
+        )
+        currentIndex++
+      } else {
+        if (typewriterRef.current) {
+          clearInterval(typewriterRef.current)
+          typewriterRef.current = null
+        }
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === messageId ? { ...msg, isTyping: false } : msg
+          )
+        )
+      }
+    }, typingSpeed)
+  }
+
   const sendMessage = async () => {
     if (!input.trim() || loading) return
 
@@ -103,6 +148,11 @@ export default function Chat() {
     setInput('')
     setLoading(true)
 
+    if (typewriterRef.current) {
+      clearInterval(typewriterRef.current)
+      typewriterRef.current = null
+    }
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -112,29 +162,32 @@ export default function Chat() {
 
       const data = await response.json()
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: data.response,
-        timestamp: new Date().toISOString(),
-        actions: data.actions,
-      }
+      if (data.success && data.data) {
+        const assistantMessageId = (Date.now() + 1).toString()
+        typeMessage(data.data.response, assistantMessageId, data.data.actions)
 
-      setMessages((prev) => [...prev, assistantMessage])
-
-      if (currentConversationId) {
-        addMessage(currentConversationId, userMessage)
-        addMessage(currentConversationId, assistantMessage)
+        if (currentConversationId) {
+          addMessage(currentConversationId, userMessage)
+          const finalAssistantMessage: Message = {
+            id: assistantMessageId,
+            role: 'assistant',
+            content: data.data.response,
+            timestamp: new Date().toISOString(),
+            actions: data.data.actions,
+          }
+          addMessage(currentConversationId, finalAssistantMessage)
+        }
+      } else {
+        const errorMessageId = (Date.now() + 1).toString()
+        typeMessage(
+          data.error || 'Desculpe, ocorreu um erro. Tente novamente.',
+          errorMessageId
+        )
       }
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error)
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Desculpe, ocorreu um erro. Tente novamente.',
-        timestamp: new Date().toISOString(),
-      }
-      setMessages((prev) => [...prev, errorMessage])
+      const errorMessageId = (Date.now() + 1).toString()
+      typeMessage('Desculpe, ocorreu um erro. Tente novamente.', errorMessageId)
     } finally {
       setLoading(false)
     }
@@ -288,6 +341,7 @@ export default function Chat() {
                       justifyContent: 'center',
                       fontSize: '10px',
                       color: 'var(--color-text-inverse)',
+                      animation: message.isTyping ? 'biometric-pulse 1s ease-in-out infinite' : 'none',
                     }}
                   >
                     ◐
@@ -301,6 +355,17 @@ export default function Chat() {
                   >
                     Glicose AI
                   </span>
+                  {message.isTyping && (
+                    <span
+                      style={{
+                        fontSize: 'var(--font-size-xs)',
+                        color: 'var(--color-primary)',
+                        animation: 'pulse-glow 1s ease-in-out infinite',
+                      }}
+                    >
+                      digitando...
+                    </span>
+                  )}
                 </div>
               )}
               <p
@@ -311,11 +376,24 @@ export default function Chat() {
                       ? 'var(--color-text-primary)'
                       : 'var(--color-text-secondary)',
                   lineHeight: 'var(--line-height-relaxed)',
+                  fontFamily: message.role === 'assistant' && message.isTyping ? 'var(--font-mono)' : 'inherit',
                 }}
               >
                 {message.content}
+                {message.isTyping && (
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      width: '2px',
+                      height: '1em',
+                      backgroundColor: 'var(--color-primary)',
+                      marginLeft: '2px',
+                      animation: 'blink 1s step-end infinite',
+                    }}
+                  />
+                )}
               </p>
-              {message.actions && message.actions.length > 0 && (
+              {message.actions && message.actions.length > 0 && !message.isTyping && (
                 <div
                   style={{
                     display: 'flex',
@@ -339,8 +417,16 @@ export default function Chat() {
                         cursor: 'pointer',
                         transition: 'all var(--transition-fast)',
                       }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--color-primary)'
+                        e.currentTarget.style.color = 'var(--color-bg)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--color-primary-light)'
+                        e.currentTarget.style.color = 'var(--color-primary)'
+                      }}
                     >
-                      {action.label}
+                      {action.label || action.type}
                     </button>
                   ))}
                 </div>
@@ -348,7 +434,8 @@ export default function Chat() {
             </Card>
           </div>
         ))}
-        {loading && (
+
+        {loading && messages.filter((m) => m.isTyping).length === 0 && (
           <div
             style={{
               display: 'flex',

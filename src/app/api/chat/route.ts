@@ -18,11 +18,14 @@ interface ChatAction {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { messages, userId = 'default' } = body
+    const { message, messages, userId = 'default' } = body
 
-    if (!messages || !Array.isArray(messages)) {
+    // Support both single message and conversation formats
+    const messageText = message || (messages?.length > 0 ? messages[messages.length - 1].content : null)
+
+    if (!messageText && (!messages || !Array.isArray(messages))) {
       return NextResponse.json(
-        { success: false, error: 'Messages array is required' },
+        { success: false, error: 'Message or messages array is required' },
         { status: 400 }
       )
     }
@@ -70,8 +73,7 @@ Tipos de ação:
 
 Exemplo: "Sua dose seria de 2.5 unidades. [AÇÃO: save_insulin|{"correction": 2.5, "glucoseValue": 250}]"`
 
-    const lastUserMessage = messages.filter((m: ChatMessage) => m.role === 'user').pop()
-    const recentMessages = messages.slice(-10)
+    const recentMessages = messageText ? [{ role: 'user' as const, content: messageText }] : messages.slice(-10)
 
     const llmMessages: ChatMessage[] = [
       { role: 'system', content: systemPrompt },
@@ -85,7 +87,7 @@ Exemplo: "Sua dose seria de 2.5 unidades. [AÇÃO: save_insulin|{"correction": 2
       console.warn('NVIDIA_NIM_API_KEY not configured, using fallback NLP')
 
       // Fallback: NLP local baseado em patterns
-      const lastMessage = lastUserMessage?.content || ''
+      const lastMessage = messageText || ''
       const text = lastMessage.toLowerCase()
 
       let response = 'Não consegui conectar ao servidor de IA. Verifique a API Key nas configurações do Vercel.'
