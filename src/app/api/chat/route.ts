@@ -78,12 +78,13 @@ export async function POST(request: NextRequest) {
     // ============================================
     let context: string | undefined = undefined
 
-    if (text.includes('acordar') || text.includes('acordei') || text.includes('jejum') || text.includes('manhã') || text.includes('manha')) {
-      context = 'fasting'
-    } else if (text.includes('antes') && (text.includes('refeição') || text.includes('comer') || text.includes('almoço') || text.includes('janta') || text.includes('café'))) {
+    // Prioridade: contextos compostos primeiro
+    if (text.includes('antes') && (text.includes('almoço') || text.includes('almoco') || text.includes('janta') || text.includes('jantar') || text.includes('café') || text.includes('cafe') || text.includes('refeição') || text.includes('refeicao') || text.includes('comer'))) {
       context = 'before_meal'
     } else if (text.includes('depois') || text.includes('após') || text.includes('apos') || text.includes('pós') || text.includes('pos')) {
       context = 'after_meal'
+    } else if (text.includes('acordar') || text.includes('acordei') || text.includes('jejum')) {
+      context = 'fasting'
     } else if (text.includes('dormir') || text.includes('cama') || text.includes('noite')) {
       context = 'bedtime'
     } else if (text.includes('exercício') || text.includes('exercicio') || text.includes('treino') || text.includes('academia')) {
@@ -93,6 +94,8 @@ export async function POST(request: NextRequest) {
     } else if (text.includes('janta') || text.includes('jantar')) {
       context = 'dinner'
     } else if (text.includes('café') || text.includes('cafe') || text.includes('desjejum')) {
+      context = 'breakfast'
+    } else if (text.includes('manhã') || text.includes('manha')) {
       context = 'breakfast'
     }
 
@@ -113,7 +116,7 @@ export async function POST(request: NextRequest) {
       'feijoada', 'churrasco', 'หอมหม้อ', 'кори', 'tapioca', 'mingau'
     ]
 
-    const mealPattern = /(?:comi|comedo|almocar|almocei|jantei|jantar|lanchei|lanchonete| Breakfast|cafe|café|comida|refeição|refeicao|aliment(?:ação|acao)|comeu|mastigar|degust(?:e|i|ar))\s*(?:de)?\s*(.+)/i
+    const mealPattern = /(?:comi|comedo|almocar|almocei|jantei|jantar|lanchei|lanchonete|cafe|café|comida|refeição|refeicao|aliment(?:ação|acao)|comeu|mastigar|degust(?:e|i|ar)| Tomei|Tomei| tomei| tomei)\s*(?:de)?\s*(.+)/i
     const mealMatch = message.match(mealPattern)
 
     let foods: string[] = []
@@ -123,8 +126,14 @@ export async function POST(request: NextRequest) {
       const foodText = mealMatch[1].toLowerCase()
       foods = foodKeywords.filter(kw => foodText.includes(kw))
 
+      // Palavras para excluir (não são alimentos)
+      const excludeWords = ['junto', 'tudo', 'isso', 'aquilo', 'nada', 'mais', 'nao', 'não', 'sim', 'que', 'com', 'para', 'por']
+      foods = foods.filter(f => !excludeWords.includes(f))
+
       if (foods.length === 0) {
-        foods = foodText.split(/[\s,]+/).filter(w => w.length > 2).slice(0, 5)
+        // Se nao capturou keywords, tenta extrair substantivos
+        const candidates = foodText.split(/[\s,]+/).filter(w => w.length > 3)
+        foods = candidates.filter(w => !excludeWords.includes(w)).slice(0, 5)
       }
 
       carbsEstimate = estimateCarbs(foods)
