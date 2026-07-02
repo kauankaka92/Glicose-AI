@@ -24,7 +24,7 @@ git config user.name "kauankaka92"
 echo       Usuario: kauankaka92 / leitekauan538@gmail.com
 echo.
 git remote remove origin 2>nul
-git remote add origin https://kauankaka92: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@github.com/kauankaka92/Glicose-AI.git
+git remote add origin https://github.com/kauankaka92/Glicose-AI.git
 echo       OK: https://github.com/kauankaka92/Glicose-AI.git
 echo.
 
