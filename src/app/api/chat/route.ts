@@ -216,21 +216,20 @@ export async function POST(request: NextRequest) {
     // Segmentar texto por marcadores de refeição - CAPTURAR APENAS ITENS
     const mealSegmentPatterns = [
       // Café da manhã: captura até próximo marcador (funciona com "No café", "café", etc)
-      { pattern: /(?:no\s+)?(?:cafe|café|café da manhã|cafe da manha)\s*[:\-]?\s*(.+?)(?=(?:\bno\s+almoço|\bno\s+almoco|\bantes\s+do\s+almoço|\bapos\s+o\s+almoço|\bdepois\s+do\s+almoço|\balmoco|almoço|janta|jantar|$))/gi, meal: 'breakfast' },
-      // Almoço: captura até "depois do almoço" ou jantar (funciona com "No almoço", "almoço", etc)
-      { pattern: /(?:no\s+)?(?:almoco|almoço)\s*[:\-]?\s*(.+?)(?=(?:\bdepois\s+do\s+almoço|\bapos\s+o\s+almoço|\bno\s+jantar|\bjanta|\bcafe|café|$))/gi, meal: 'lunch' },
-      // Lanche pós-almoço: captura até próximo marcador (padrão com "comi" ou "consumi")
-      { pattern: /(?:depois\s+do\s+almoço|apos\s+o\s+almoço)\s+(?:eu\s+)?(?:comi|consumi)\s*[:\-]?\s*(.+?)(?=(?:\bno\s+jantar|\bjanta|\bcafe|café|\balmoco|almoço|$))/gi, meal: 'snack' },
-      // Lanche pós-almoço sem "comi" - direto para lista
-      { pattern: /(?:depois\s+do\s+almoço|apos\s+o\s+almoço)\s*[:\-]?\s*(.+?)(?=(?:\bno\s+jantar|\bjanta|\bcafe|café|\balmoco|almoço|$))/gi, meal: 'snack' },
+      // Usa [\s\S] para capturar através de newlines
+      { pattern: /(?:no\s+)?(?:cafe|café|café da manhã|cafe da manha)\s*[:\-\n]?\s*([\s\S]+?)(?=\bno\s+almoço|\bno\s+almoco|\bantes\s+do\s+almoço|\bapos\s+o\s+almoço|\bdepois\s+do\s+almoço|\balmoco|almoço|janta|jantar|$)/gi, meal: 'breakfast' },
+      // Almoço: captura até "depois do almoço" ou jantar
+      { pattern: /(?:no\s+)?(?:almoco|almoço)\s*[:\-\n]?\s*([\s\S]+?)(?=\bdepois\s+do\s+almoço|\bapos\s+o\s+almoço|\bno\s+jantar|\bjanta|\bcafe|café|$)/gi, meal: 'lunch' },
+      // Lanche pós-almoço: com "comi" ou "consumi"
+      { pattern: /(?:depois\s+do\s+almoço|apos\s+o\s+almoço)\s+(?:eu\s+)?(?:comi|consumi)\s*[:\-\n]?\s*([\s\S]+?)(?=\bno\s+jantar|\bjanta|\bcafe|café|\balmoco|almoço|$)/gi, meal: 'snack' },
       // Jantar: captura até fim
-      { pattern: /(?:janta|jantar)\s*[:\-]?\s*(.+?)(?=(?:\bcafe|café|\balmoco|almoço|$))/gi, meal: 'dinner' },
+      { pattern: /(?:janta|jantar)\s*[:\-\n]?\s*([\s\S]+?)(?=\bcafe|café|\balmoco|almoço|$)/gi, meal: 'dinner' },
     ]
 
     const allFoods: { items: string[]; meal: string; carbs: number; description: string }[] = []
 
     console.log('[STREAM DE EVENTOS] Iniciando extração de alimentos...')
-    console.log('[STREAM DE EVENTOS] Mensagem:', message.substring(0, 200))
+    console.log('[STREAM DE EVENTOS] Mensagem:', message.substring(0, 300))
 
     for (const { pattern, meal } of mealSegmentPatterns) {
       let match
@@ -426,8 +425,12 @@ export async function POST(request: NextRequest) {
 
     // Salvar TODAS as refeicoes detectadas
     const savedFoods: any[] = []
-    for (const evt of events.filter(e => e.type === 'food_event')) {
+    const foodEventsToSave = events.filter(e => e.type === 'food_event')
+    console.log('[MOTOR DE DADOS] Food events para salvar:', foodEventsToSave.length)
+
+    for (const evt of foodEventsToSave) {
       const foodEvent = evt as ClinicalEvent & { items: string[], meal: string }
+      console.log('[MOTOR DE DADOS] Salvando food_event:', foodEvent.meal, foodEvent.items)
       const totalCarbs = estimateCarbs(foodEvent.items, '')
       const saved = saveFood({
         items: foodEvent.items.map(name => ({ name, carbs: Math.round(totalCarbs / foodEvent.items.length) })),
@@ -440,9 +443,13 @@ export async function POST(request: NextRequest) {
 
     if (savedFoods.length > 0) {
       savedData.food = savedFoods
+      console.log('[MOTOR DE DADOS] Alimentos salvos:', savedFoods.length)
+    } else {
+      console.log('[MOTOR DE DADOS] NENHUM alimento salvo')
     }
 
     if (event.insulin && event.insulin.total > 0) {
+      console.log('[MOTOR DE DADOS] Salvando insulina:', event.insulin.total, 'U')
       savedData.insulin = saveInsulin({
         correction: event.insulin.correction,
         meal: event.insulin.meal,
@@ -451,6 +458,8 @@ export async function POST(request: NextRequest) {
         glucoseValue: glucoseValue || undefined,
         note: message
       })
+    } else {
+      console.log('[MOTOR DE DADOS] Sem insulina para salvar')
     }
 
     // ============================================
