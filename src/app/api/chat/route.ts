@@ -175,7 +175,7 @@ Assistant: "Para 200 mg/dL: (200 - ${settings.targetGlucose}) / ${settings.corre
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.NVIDIA_API_KEY}`,
+        'Authorization': `Bearer ${process.env.NVIDIA_NIM_API_KEY}`,
       },
       body: JSON.stringify({
         model: 'nvidia/llama-3.1-nemotron-70b-instruct',
