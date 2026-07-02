@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       /\b(?:ao\s+acordar|antes\s+.*|apos\s+.*|depois\s+.*|em\s+jejum|jejum)\s*[:\-.]?\s*(\d{3})\b/gi,
     ]
 
-    // Extrair TODAS as glicoses do texto
+    // Extrair TODAS as glicoses do texto - SEM DUPLICATAS
     const allGlucoseMatches: { value: number; context: string; index: number }[] = []
 
     // Padroes com contexto
@@ -106,23 +106,49 @@ export async function POST(request: NextRequest) {
     ]
 
     for (const { pattern, context } of contextGlucosePatterns) {
-      let match
+      let match: RegExpExecArray | null
       while ((match = pattern.exec(message)) !== null) {
         const value = parseInt(match[1], 10)
         if (value >= 20 && value <= 600) {
-          allGlucoseMatches.push({ value, context, index: match.index })
+          // Verificar duplicata por posição E valor
+          const exists = allGlucoseMatches.some(m => m.value === value && Math.abs(m.index - match!.index) < 20)
+          if (!exists) {
+            allGlucoseMatches.push({ value, context, index: match.index })
+          }
         }
       }
     }
 
-    // Padroes gerais de glicose
+    // Padrão específico: "estava em XXX mg/dL" - captura glicose com contexto
+    const estavaPattern = /(?:estava|ficava|medi)\s+(?:novamente\s+)?(?:e\s+)?(?:estava\s+)?(?:em\s+)?(\d{2,3})\s*(?:mg\/dl)?/gi
+    let matchEstava: RegExpExecArray | null
+    while ((matchEstava = estavaPattern.exec(message)) !== null) {
+      const value = parseInt(matchEstava[1], 10)
+      if (value >= 20 && value <= 600) {
+        const exists = allGlucoseMatches.some(m => m.value === value && Math.abs(m.index - matchEstava!.index) < 20)
+        if (!exists) {
+          // Determinar contexto pelo texto anterior
+          const beforeText = message.substring(0, matchEstava.index).toLowerCase()
+          let ctx = ''
+          if (beforeText.includes('depois') || beforeText.includes('apos')) ctx = 'after_meal'
+          else if (beforeText.includes('antes')) ctx = 'before_meal'
+          else if (beforeText.includes('jejum') || beforeText.includes('acordar')) ctx = 'fasting'
+
+          if (ctx) {
+            allGlucoseMatches.push({ value, context: ctx, index: matchEstava.index })
+          }
+        }
+      }
+    }
+
+    // Padroes gerais de glicose (fallback)
     for (const pattern of glucosePatterns) {
-      let match
+      let match: RegExpExecArray | null
       while ((match = pattern.exec(message)) !== null) {
         const value = parseInt(match[1], 10)
         if (value >= 20 && value <= 600) {
-          // Verificar se já não foi adicionado
-          const exists = allGlucoseMatches.some(m => m.value === value && Math.abs(m.index - match!.index) < 5)
+          // Verificar duplicata por posição E valor (tolerância maior)
+          const exists = allGlucoseMatches.some(m => m.value === value && Math.abs(m.index - match!.index) < 20)
           if (!exists) {
             // Determinar contexto da frase
             const beforeText = message.substring(0, match.index).toLowerCase()
@@ -206,9 +232,15 @@ export async function POST(request: NextRequest) {
       while ((match = pattern.exec(message)) !== null) {
         let segment = match[1].trim()
 
+        // Limpar segmento: remover prefixos "eu comi:", "da manhã eu comi:", etc
+        segment = segment.replace(/^(?:da\s+manhã|da\s+manha|da\s+tarde|da\s+noite|do\s+almoço|do\s+café|do\s+cafe)\s+/i, '')
+        segment = segment.replace(/^(?:eu\s+)?comi[:\-]?\s*/i, '')
+        segment = segment.replace(/^no\s+(?:café|cafe|almoço|almoco|janta|jantar)\s+/i, '')
+
         // Limpar segmento: remover texto após palavras de contexto indesejado
         segment = segment.replace(/\s*(?:no\s+total|antes\s+de|depois\s+de|quero\s+que|como\s+está|minha\s+evolução|se\s+preciso).*$/i, '')
         segment = segment.replace(/^-+\s*/g, '') // remover bullets no início
+        segment = segment.replace(/\n+/g, ' ') // substituir newlines por espaço
 
         // Se segmento for muito pequeno (< 3 chars), ignorar
         if (segment.length < 3) continue
