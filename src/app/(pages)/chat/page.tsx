@@ -11,6 +11,7 @@ import {
   setCurrentConversationId,
   ChatConversation,
 } from '@/lib/chat-storage'
+import { saveGlucose, saveFood, saveInsulin } from '@/lib/storage'
 
 interface Message {
   id: string
@@ -108,64 +109,52 @@ export default function Chat() {
       }
     }
 
-    // Ação: save_glucose
+    // Ação: save_glucose - SALVAR DIRETAMENTE NO LOCALSTORAGE DO CLIENTE
     if (event.actions.includes('save_glucose') && event.data.glucose) {
       try {
-        const response = await fetch('/api/glucose', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            value: event.data.glucose,
-            context: event.data.context,
-            timestamp: new Date().toISOString()
-          })
+        const saved = saveGlucose({
+          value: event.data.glucose,
+          context: event.data.context as any,
+          timestamp: new Date().toISOString()
         })
-        console.log('[CHAT] Glucose salva via API:', await response.json())
+        console.log('[CHAT] Glucose salva no localStorage:', saved)
       } catch (error) {
         console.error('[CHAT] Erro ao salvar glicose:', error)
       }
     }
 
-    // Ação: save_food
+    // Ação: save_food - SALVAR DIRETAMENTE NO LOCALSTORAGE DO CLIENTE
     if (event.actions.includes('save_food') && event.data.meal) {
       try {
-        const response = await fetch('/api/food', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            items: event.data.meal.map(name => ({ name, carbs: Math.round((event.data.carbs_estimate || 0) / event.data.meal!.length) })),
-            totalCarbs: event.data.carbs_estimate || 0,
-            mealType: event.data.context,
-            timestamp: new Date().toISOString()
-          })
+        const saved = saveFood({
+          items: event.data.meal.map(name => ({ name, carbs: Math.round((event.data.carbs_estimate || 0) / event.data.meal!.length) })),
+          totalCarbs: event.data.carbs_estimate || 0,
+          mealType: event.data.context as any,
+          timestamp: new Date().toISOString()
         })
-        console.log('[CHAT] Alimento salvo via API:', await response.json())
+        console.log('[CHAT] Alimento salvo no localStorage:', saved)
       } catch (error) {
         console.error('[CHAT] Erro ao salvar alimento:', error)
       }
     }
 
-    // Ação: calculate_dose / save_insulin
+    // Ação: calculate_dose / save_insulin - SALVAR DIRETAMENTE NO LOCALSTORAGE DO CLIENTE
     if (event.insulin && event.insulin.total > 0) {
       try {
-        const response = await fetch('/api/insulin', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            correction: event.insulin.correction,
-            meal: event.insulin.meal,
-            total: event.insulin.total,
-            glucoseValue: event.data.glucose,
-            timestamp: new Date().toISOString()
-          })
+        const saved = saveInsulin({
+          correction: event.insulin.correction,
+          meal: event.insulin.meal,
+          total: event.insulin.total,
+          glucoseValue: event.data.glucose,
+          timestamp: new Date().toISOString()
         })
-        console.log('[CHAT] Insulina salva via API:', await response.json())
+        console.log('[CHAT] Insulina salva no localStorage:', saved)
       } catch (error) {
         console.error('[CHAT] Erro ao salvar insulina:', error)
       }
     }
 
-    // Ação: log evento
+    // Ação: log evento - API (opcional, apenas auditoria)
     if (event.actions.length > 0) {
       try {
         const response = await fetch('/api/ai-log', {
