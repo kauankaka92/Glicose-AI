@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Card, Button, Badge, Stat, Section, Container } from '@/components/UI'
+import { GlucoseIcon, TrendUpIcon, TrendDownIcon, TrendStableIcon, AIIcon, FoodIcon, InsulinIcon } from '@/components/SVGIcons'
 import { getGlucoseEntries, getFoodEntries, getInsulinEntries } from '@/lib/storage'
 import {
   calculateGlucoseStats,
@@ -93,6 +94,7 @@ export default function Dashboard() {
             <div>
               <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 'var(--spacing-sm)' }}>Glicose Atual</p>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', color: statusColor[status] }}><GlucoseIcon size={28} style={{ marginRight: '8px' }} /></span>
                 <span style={{ fontSize: 'var(--font-size-5xl)', fontWeight: 700, color: statusColor[status], fontFamily: 'var(--font-display)', textShadow: statusGlow[status] }}>{currentGlucose}</span>
                 <span style={{ fontSize: 'var(--font-size-lg)', color: 'var(--color-text-secondary)' }}>mg/dL</span>
               </div>
@@ -101,7 +103,7 @@ export default function Dashboard() {
           </div>
           {trend && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: 'var(--spacing-md)', backgroundColor: 'var(--color-bg-contrast)', borderRadius: 'var(--radius-md)' }}>
-              <span style={{ fontSize: '20px' }}>{trend.direction === 'up' ? '↑' : trend.direction === 'down' ? '↓' : '→'}</span>
+              {trend.direction === 'up' ? <TrendUpIcon size={20} style={{ color: 'var(--color-warning)' }} /> : trend.direction === 'down' ? <TrendDownIcon size={20} style={{ color: 'var(--color-success)' }} /> : <TrendStableIcon size={20} style={{ color: 'var(--color-text-secondary)' }} />}
               <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
                 {trend.direction === 'up' ? 'Subindo' : trend.direction === 'down' ? 'Descendo' : 'Estável'}
                 {Math.abs(trend.value) > 0 && ` (${Math.abs(trend.value)} mg/dL)`}
@@ -172,7 +174,7 @@ export default function Dashboard() {
             <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 'var(--spacing-sm)' }}>Recomendações</p>
             {nutrition.recommendations.map((r: string, i: number) => (
               <div key={i} style={{ display: 'flex', gap: 'var(--spacing-sm)', padding: 'var(--spacing-sm)', background: 'var(--color-bg-elevated)', borderRadius: 'var(--radius-sm)', marginBottom: 'var(--spacing-xs)' }}>
-                <span>◐</span>
+                <span style={{ color: 'var(--color-primary)' }}>●</span>
                 <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', margin: 0 }}>{r}</p>
               </div>
             ))}
@@ -247,7 +249,7 @@ export default function Dashboard() {
       <Section title="Insight IA">
         <Card style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(59,130,246,0.05) 100%)', border: '1px solid rgba(139,92,246,0.15)' }}>
           <div style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
-            <span style={{ fontSize: '24px', filter: 'drop-shadow(0 0 8px var(--color-data-purple))' }}>◐</span>
+            <AIIcon size={24} style={{ color: 'var(--color-primary)', filter: 'drop-shadow(0 0 8px var(--color-data-purple))', flexShrink: 0 }} />
             <p style={{ fontSize: 'var(--font-size-base)', color: 'var(--color-text-secondary)', lineHeight: 'var(--line-height-relaxed)' }}>{insight}</p>
           </div>
         </Card>
@@ -256,9 +258,15 @@ export default function Dashboard() {
       {/* Quick Actions */}
       <Section title="Ações Rápidas">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--spacing-md)' }}>
-          <Button variant="primary" glow onClick={() => window.location.href = '/glucose'} style={{ flex: 1 }}>+ Glicose</Button>
-          <Button variant="secondary" onClick={() => window.location.href = '/insulin'} style={{ flex: 1 }}>+ Insulina</Button>
-          <Button variant="secondary" onClick={() => window.location.href = '/food'} style={{ flex: 1 }}>+ Refeição</Button>
+          <Button variant="primary" glow onClick={() => window.location.href = '/glucose'} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            <GlucoseIcon size={18} style={{ color: 'inherit' }} /> Glicose
+          </Button>
+          <Button variant="secondary" onClick={() => window.location.href = '/insulin'} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            <InsulinIcon size={18} style={{ color: 'inherit' }} /> Insulina
+          </Button>
+          <Button variant="secondary" onClick={() => window.location.href = '/food'} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            <FoodIcon size={18} style={{ color: 'inherit' }} /> Refeição
+          </Button>
         </div>
       </Section>
     </Container>

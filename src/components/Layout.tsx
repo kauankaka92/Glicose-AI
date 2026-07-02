@@ -2,16 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { DashboardIcon, AIIcon, GlucoseIcon, FoodIcon, InsulinIcon, ChatIcon } from '@/components/SVGIcons'
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: '◈' },
-  { href: '/chat', label: 'Chat IA', icon: '◐' },
-  { href: '/glucose', label: 'Glicose', icon: '◉' },
-  { href: '/food', label: 'Alimentação', icon: '◎' },
-  { href: '/insulin', label: 'Insulina', icon: '◈' },
-  { href: '/charts', label: 'Gráficos', icon: '▤' },
+  { href: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
+  { href: '/chat', label: 'Chat IA', icon: ChatIcon },
+  { href: '/glucose', label: 'Glicose', icon: GlucoseIcon },
+  { href: '/food', label: 'Alimentação', icon: FoodIcon },
+  { href: '/insulin', label: 'Insulina', icon: InsulinIcon },
+  { href: '/charts', label: 'Gráficos', icon: DashboardIcon },
   { href: '/settings', label: 'Ajustes', icon: '⚙' },
-]
+] as const
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -39,6 +40,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       >
         {navItems.map((item) => {
           const isActive = pathname === item.href
+          const IconComponent = typeof item.icon === 'string' ? null : item.icon
           return (
             <Link
               key={item.href}
@@ -60,16 +62,26 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 minWidth: '56px',
               }}
             >
-              <span
-                style={{
-                  fontSize: '18px',
-                  lineHeight: 1,
-                  filter: isActive ? 'drop-shadow(0 0 8px var(--color-primary-glow))' : 'none',
-                  transition: 'all var(--transition-base)',
-                }}
-              >
-                {item.icon}
-              </span>
+              {IconComponent ? (
+                <IconComponent
+                  size={20}
+                  style={{
+                    filter: isActive ? 'drop-shadow(0 0 8px var(--color-primary-glow))' : 'none',
+                    transition: 'all var(--transition-base)',
+                  }}
+                />
+              ) : (
+                <span
+                  style={{
+                    fontSize: '18px',
+                    lineHeight: 1,
+                    filter: isActive ? 'drop-shadow(0 0 8px var(--color-primary-glow))' : 'none',
+                    transition: 'all var(--transition-base)',
+                  }}
+                >
+                  {item.icon}
+                </span>
+              )}
               {item.label}
             </Link>
           )

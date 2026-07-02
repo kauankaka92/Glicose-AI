@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, Button } from '@/components/UI'
+import { GlucoseIcon, AIIcon, DashboardIcon, TrendStableIcon } from '@/components/SVGIcons'
 
 export default function Home() {
   const router = useRouter()
@@ -96,41 +97,46 @@ export default function Home() {
         }}
       >
         {[
-          { icon: '◉', label: 'Registros' },
-          { icon: '◐', label: 'IA Chat' },
-          { icon: '▤', label: 'Gráficos' },
-        ].map((feature) => (
-          <Card
-            key={feature.label}
-            style={{
-              padding: 'var(--spacing-xl)',
-              textAlign: 'center',
-              background: 'var(--color-bg-secondary)',
-              border: '1px solid var(--color-border)',
-            }}
-          >
-            <div
+          { icon: GlucoseIcon, label: 'Registros' },
+          { icon: AIIcon, label: 'IA Chat' },
+          { icon: DashboardIcon, label: 'Gráficos' },
+        ].map((feature) => {
+          const IconComponent = feature.icon
+          return (
+            <Card
+              key={feature.label}
               style={{
-                fontSize: '32px',
-                marginBottom: 'var(--spacing-sm)',
-                color: 'var(--color-primary)',
+                padding: 'var(--spacing-xl)',
+                textAlign: 'center',
+                background: 'var(--color-bg-secondary)',
+                border: '1px solid var(--color-border)',
               }}
             >
-              {feature.icon}
-            </div>
-            <div
-              style={{
-                fontSize: 'var(--font-size-xs)',
-                color: 'var(--color-text-secondary)',
-                fontWeight: 600,
-                letterSpacing: '0.02em',
-                textTransform: 'uppercase',
-              }}
-            >
-              {feature.label}
-            </div>
-          </Card>
-        ))}
+              <div
+                style={{
+                  marginBottom: 'var(--spacing-sm)',
+                  color: 'var(--color-primary)',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <IconComponent size={32} style={{ filter: 'drop-shadow(0 0 8px var(--color-primary-glow))' }} />
+              </div>
+              <div
+                style={{
+                  fontSize: 'var(--font-size-xs)',
+                  color: 'var(--color-text-secondary)',
+                  fontWeight: 600,
+                  letterSpacing: '0.02em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                {feature.label}
+              </div>
+            </Card>
+          )
+        })}
       </div>
 
       {/* CTA Button */}
@@ -143,10 +149,14 @@ export default function Home() {
           padding: '16px 48px',
           fontSize: 'var(--font-size-lg)',
           fontWeight: 600,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
         }}
       >
         Começar Agora
-        <span style={{ marginLeft: '8px' }}>→</span>
+        <TrendStableIcon size={20} style={{ transform: 'rotate(-45deg)' }} />
       </Button>
 
       {/* Footer */}
