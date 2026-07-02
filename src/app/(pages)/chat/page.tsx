@@ -207,27 +207,36 @@ export default function Chat() {
 
       // Salvar TODAS as insulinas do stream
       const insulinEvents = event.stream.events.filter(e => e.type === 'insulin_event')
-      console.log('[CHAT] Insulin events no stream:', insulinEvents.length)
+      console.log('[CHAT] Insulin events no stream:', insulinEvents.length, 'total events:', event.stream.events.length)
+      console.log('[CHAT] Stream completo:', JSON.stringify(event.stream.events, null, 2))
       for (const evt of insulinEvents) {
         try {
           const insulinEvent = evt as any
           console.log('[CHAT] Salvando insulin_event:', insulinEvent.dose, 'U para', insulinEvent.meal)
 
           // Buscar glicose mais próxima antes deste evento de insulina
-          const evtIndex = event.stream.events.findIndex(e => e === evt)
-          const glucoseBefore = event.stream.events.filter((e: any, i: number) =>
-            e.type === 'glucose_event' && i < evtIndex
-          ).pop()
+          // Usar order field para encontrar posicao relativa (mais confiavel que referencia de objeto apos JSON.parse)
+          const evtOrder = insulinEvent.order
+          const glucoseBefore = event.stream.events.find((e: any) =>
+            e.type === 'glucose_event' && e.order < evtOrder
+          )
+          // Pegar a ULTIMA glicose antes da insulina (mais proxima temporalmente)
+          const allGlucoseBefore = event.stream.events.filter((e: any) =>
+            e.type === 'glucose_event' && e.order < evtOrder
+          )
+          const lastGlucoseBefore = allGlucoseBefore.length > 0 ? allGlucoseBefore[allGlucoseBefore.length - 1] : null
+
+          console.log('[CHAT] Insulin order:', evtOrder, 'glucose antes:', lastGlucoseBefore?.value, 'order:', lastGlucoseBefore?.order)
 
           const saved = saveInsulin({
             correction: insulinEvent.dose,
             meal: 0,
             total: insulinEvent.dose,
-            glucoseValue: glucoseBefore?.value,
+            glucoseValue: lastGlucoseBefore?.value,
             timestamp: evt.timestamp || new Date().toISOString(),
             note: `Insulina para ${insulinEvent.meal}`
           })
-          console.log('[CHAT] Insulina do stream salva:', insulinEvent.dose, 'U', 'glicose:', glucoseBefore?.value)
+          console.log('[CHAT] Insulina do stream salva:', insulinEvent.dose, 'U', 'glicose:', lastGlucoseBefore?.value)
         } catch (error) {
           console.error('[CHAT] Erro ao salvar insulina do stream:', error)
         }
