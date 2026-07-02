@@ -197,7 +197,8 @@ export async function POST(request: NextRequest) {
       'café', 'cafe', 'leite', 'suco', 'refrigerante', 'refri', 'cerveja', 'vinho',
       'pizza', 'hamburguer', 'hambúrguer', 'lanche', 'sanduiche', 'sanduíche',
       'feijoada', 'churrasco', 'tapioca', 'mingau', 'sopa', 'caldo',
-      'pedacos', 'pedaço', 'pedaços', 'fatia', 'fatias', 'copo', 'copos', 'xicara', 'xícaras'
+      'pedacos', 'pedaço', 'pedaços', 'fatia', 'fatias', 'copo', 'copos', 'xicara', 'xícaras',
+      'pacote', 'pacotinho', 'colher', 'colheres', 'chá', 'chazinho', 'sopa', 'canela'
     ]
 
     const excludeWords = [
@@ -214,11 +215,13 @@ export async function POST(request: NextRequest) {
 
     // Segmentar texto por marcadores de refeição - CAPTURAR APENAS ITENS
     const mealSegmentPatterns = [
-      // Café da manhã: captura até próximo marcador
-      { pattern: /(?:cafe|café|café da manhã|cafe da manha)\s*[:\-]?\s*(.+?)(?=(?:\bno\s+almoço|\bno\s+almoco|\bantes\s+do\s+almoço|\bapos\s+o\s+almoço|\bdepois\s+do\s+almoço|\balmoco|almoço|janta|jantar|$))/gi, meal: 'breakfast' },
-      // Almoço: captura até "depois do almoço" ou jantar
-      { pattern: /(?:almoco|almoço)\s*[:\-]?\s*(.+?)(?=(?:\bdepois\s+do\s+almoço|\bapos\s+o\s+almoço|\bno\s+jantar|\bjanta|\bcafe|café|$))/gi, meal: 'lunch' },
-      // Lanche pós-almoço: captura até próximo marcador
+      // Café da manhã: captura até próximo marcador (funciona com "No café", "café", etc)
+      { pattern: /(?:no\s+)?(?:cafe|café|café da manhã|cafe da manha)\s*[:\-]?\s*(.+?)(?=(?:\bno\s+almoço|\bno\s+almoco|\bantes\s+do\s+almoço|\bapos\s+o\s+almoço|\bdepois\s+do\s+almoço|\balmoco|almoço|janta|jantar|$))/gi, meal: 'breakfast' },
+      // Almoço: captura até "depois do almoço" ou jantar (funciona com "No almoço", "almoço", etc)
+      { pattern: /(?:no\s+)?(?:almoco|almoço)\s*[:\-]?\s*(.+?)(?=(?:\bdepois\s+do\s+almoço|\bapos\s+o\s+almoço|\bno\s+jantar|\bjanta|\bcafe|café|$))/gi, meal: 'lunch' },
+      // Lanche pós-almoço: captura até próximo marcador (padrão com "comi" ou "consumi")
+      { pattern: /(?:depois\s+do\s+almoço|apos\s+o\s+almoço)\s+(?:eu\s+)?(?:comi|consumi)\s*[:\-]?\s*(.+?)(?=(?:\bno\s+jantar|\bjanta|\bcafe|café|\balmoco|almoço|$))/gi, meal: 'snack' },
+      // Lanche pós-almoço sem "comi" - direto para lista
       { pattern: /(?:depois\s+do\s+almoço|apos\s+o\s+almoço)\s*[:\-]?\s*(.+?)(?=(?:\bno\s+jantar|\bjanta|\bcafe|café|\balmoco|almoço|$))/gi, meal: 'snack' },
       // Jantar: captura até fim
       { pattern: /(?:janta|jantar)\s*[:\-]?\s*(.+?)(?=(?:\bcafe|café|\balmoco|almoço|$))/gi, meal: 'dinner' },
@@ -226,10 +229,15 @@ export async function POST(request: NextRequest) {
 
     const allFoods: { items: string[]; meal: string; carbs: number; description: string }[] = []
 
+    console.log('[STREAM DE EVENTOS] Iniciando extração de alimentos...')
+    console.log('[STREAM DE EVENTOS] Mensagem:', message.substring(0, 200))
+
     for (const { pattern, meal } of mealSegmentPatterns) {
       let match
       while ((match = pattern.exec(message)) !== null) {
         let segment = match[1].trim()
+
+        console.log('[STREAM DE EVENTOS] Match encontrado:', meal, 'segment bruto:', segment)
 
         // Limpar segmento: remover prefixos
         segment = segment.replace(/^(?:da\s+manhã|da\s+manha|da\s+tarde|da\s+noite|do\s+almoço|do\s+café|do\s+cafe)\s+/i, '')
@@ -244,11 +252,19 @@ export async function POST(request: NextRequest) {
         segment = segment.replace(/\n+/g, ' ') // substituir newlines por espaço
         segment = segment.replace(/\s+/g, ' ') // normalizar espaços
 
-        // Se segmento for muito pequeno (< 3 chars), ignorar
-        if (segment.length < 3) continue
+        console.log('[STREAM DE EVENTOS] Segment limpo:', segment)
 
-        const foodsInSegment = foodKeywords.filter(kw => segment.toLowerCase().includes(kw))
-          .filter(f => !excludeWords.includes(f))
+        // Se segmento for muito pequeno (< 3 chars), ignorar
+        if (segment.length < 3) {
+          console.log('[STREAM DE EVENTOS] Segmento muito curto, ignorando')
+          continue
+        }
+
+        const foodsInSegment = foodKeywords.filter(kw => {
+          const found = segment.toLowerCase().includes(kw)
+          if (found) console.log('[STREAM DE EVENTOS] Keyword encontrada:', kw)
+          return found
+        }).filter(f => !excludeWords.includes(f))
 
         if (foodsInSegment.length > 0) {
           const uniqueFoods = [...new Set(foodsInSegment)]
@@ -257,6 +273,8 @@ export async function POST(request: NextRequest) {
           const description = segment
           allFoods.push({ items: uniqueFoods, meal, carbs, description })
           console.log('[STREAM DE EVENTOS] Refeição detectada:', meal, 'alimentos:', uniqueFoods, 'carbs:', carbs, 'descricao:', description)
+        } else {
+          console.log('[STREAM DE EVENTOS] Refeição SEM alimentos detectados:', meal, 'segment:', segment)
         }
       }
     }
@@ -334,9 +352,21 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================
-    // 5. CALCULAR INSULINA (SE GLICOSE FOR FORNECIDA)
+    // 5. CALCULAR INSULINA (APENAS SE EXPLICITAMENTE SOLICITADO)
     // ============================================
-    if (glucoseValue) {
+    // Só calcular se usuário usou palavras como "preciso", "quanto", "dose", "sugira"
+    const insulinRequestPatterns = [
+      /preciso\s+(?:de\s+)?(?:insulina|correcao|correção)/i,
+      /quanto\s+(?:de\s+)?(?:insulina|correcao|correção)/i,
+      /sugira\s+(?:a\s+)?(?:dose|insulina)/i,
+      /qual\s+(?:a\s+)?(?:dose|insulina)/i,
+      /me\s+(?:diga|sugira|recomende)\s+(?:a\s+)?(?:dose|insulina|correcao|correção)/i,
+      /devo\s+(?:tomar|aplicar)\s+quantas\s+(?:unidades|u)/i,
+    ]
+
+    const isInsulinRequested = insulinRequestPatterns.some(p => p.test(message))
+
+    if (glucoseValue && isInsulinRequested) {
       const correction = calculateInsulinCorrection(glucoseValue, settings.targetGlucose, settings.correctionFactor)
 
       let mealInsulin = 0
@@ -346,14 +376,21 @@ export async function POST(request: NextRequest) {
 
       const total = correction + mealInsulin
 
-      if (total > 0) {
+      // Apenas registrar se total >= 1.5U (arredonda para 2U) ou >= 2U
+      if (total >= 1.5) {
+        const roundedTotal = Math.round(total) // 1.5 → 2, 2.3 → 2, 2.7 → 3
         event.insulin = {
           correction,
           meal: mealInsulin,
-          total
+          total: roundedTotal
         }
         event.actions.push('calculate_dose')
+        console.log('[MOTOR DE DADOS] Insulina calculada (solicitada):', roundedTotal, 'U (total:', total, ')')
+      } else {
+        console.log('[MOTOR DE DADOS] Insulina NÃO registrada - total', total, 'U < 1.5U')
       }
+    } else if (glucoseValue && !isInsulinRequested) {
+      console.log('[MOTOR DE DADOS] Insulina NÃO calculada - usuário não solicitou')
     }
 
     // Se usuário mencionou insulina explícita (ex: "tomei 5 unidades")
