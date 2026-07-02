@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, Button, Input, Alert, Stat, ProgressBar } from '@/components/UI'
+import { Card, Button, Alert } from '@/components/UI'
 import { saveInsulin, getInsulinEntries, deleteInsulinEntry, getSettings } from '@/lib/storage'
 import { InsulinEntry } from '@/lib/types'
 import { calculateTotalInsulin } from '@/lib/insights'
@@ -76,6 +76,27 @@ export default function InsulinPage() {
     loadEntries()
 
     setTimeout(() => setAlert(null), 3000)
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '12px 14px',
+    borderRadius: 'var(--radius-md)',
+    border: '1px solid var(--color-border)',
+    backgroundColor: 'var(--color-bg-secondary)',
+    color: 'var(--color-text-primary)',
+    fontSize: 'var(--font-size-base)',
+    outline: 'none',
+    transition: 'all var(--transition-fast)',
+    fontFamily: 'var(--font-mono)',
+  }
+
+  const labelStyle: React.CSSProperties = {
+    display: 'block',
+    fontSize: 'var(--font-size-sm)',
+    fontWeight: 500,
+    color: 'var(--color-text-secondary)',
+    marginBottom: '6px',
   }
 
   const handleDelete = (id: string) => {
@@ -253,64 +274,126 @@ export default function InsulinPage() {
       >
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
-            <Input
-              label="Glicose (mg/dL)"
-              type="number"
-              min="20"
-              max="600"
-              value={glucose}
-              onChange={(e) => setGlucose(e.target.value)}
-              placeholder="Ex: 120"
-            />
-            <Input
-              label="Carboidratos (g)"
-              type="number"
-              min="0"
-              max="500"
-              value={carbs}
-              onChange={(e) => setCarbs(e.target.value)}
-              placeholder="Ex: 45"
-            />
+            <div>
+              <label style={labelStyle}>Glicose (mg/dL)</label>
+              <input
+                type="number"
+                min="20"
+                max="600"
+                value={glucose}
+                onChange={(e) => setGlucose(e.target.value)}
+                placeholder="Ex: 120"
+                style={inputStyle}
+                onFocus={(e) => {
+                  e.target.style.borderColor = 'var(--color-primary)'
+                  e.target.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'var(--color-border)'
+                  e.target.style.boxShadow = 'none'
+                }}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Carboidratos (g)</label>
+              <input
+                type="number"
+                min="0"
+                max="500"
+                value={carbs}
+                onChange={(e) => setCarbs(e.target.value)}
+                placeholder="Ex: 45"
+                style={inputStyle}
+                onFocus={(e) => {
+                  e.target.style.borderColor = 'var(--color-primary)'
+                  e.target.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'var(--color-border)'
+                  e.target.style.boxShadow = 'none'
+                }}
+              />
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
-            <Input
-              label="Correção (U)"
-              type="number"
-              step="0.1"
-              value={correction}
-              onChange={(e) => setCorrection(e.target.value)}
-              placeholder="0.0"
-            />
-            <Input
-              label="Refeição (U)"
-              type="number"
-              step="0.1"
-              value={meal}
-              onChange={(e) => setMeal(e.target.value)}
-              placeholder="0.0"
-            />
+            <div>
+              <label style={labelStyle}>Correção (U)</label>
+              <input
+                type="number"
+                step="0.1"
+                value={correction}
+                onChange={(e) => setCorrection(e.target.value)}
+                placeholder="0.0"
+                style={inputStyle}
+                onFocus={(e) => {
+                  e.target.style.borderColor = 'var(--color-primary)'
+                  e.target.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'var(--color-border)'
+                  e.target.style.boxShadow = 'none'
+                }}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Refeição (U)</label>
+              <input
+                type="number"
+                step="0.1"
+                value={meal}
+                onChange={(e) => setMeal(e.target.value)}
+                placeholder="0.0"
+                style={inputStyle}
+                onFocus={(e) => {
+                  e.target.style.borderColor = 'var(--color-primary)'
+                  e.target.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'var(--color-border)'
+                  e.target.style.boxShadow = 'none'
+                }}
+              />
+            </div>
           </div>
 
           <div style={{ marginBottom: 'var(--spacing-lg)' }}>
-            <Input
-              label="Total (U)"
+            <label style={labelStyle}>Total (U)</label>
+            <input
               type="number"
               step="0.1"
               value={total}
               onChange={(e) => setTotal(e.target.value)}
               placeholder="0.0"
               required
+              style={inputStyle}
+              onFocus={(e) => {
+                e.target.style.borderColor = 'var(--color-primary)'
+                e.target.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'var(--color-border)'
+                e.target.style.boxShadow = 'none'
+              }}
             />
           </div>
 
           <div style={{ marginBottom: 'var(--spacing-lg)' }}>
-            <Input
-              label="Observação (opcional)"
+            <label style={labelStyle}>Observação (opcional)</label>
+            <input
+              type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Ex: Antes do almoço"
-              multiline
+              style={inputStyle}
+              onFocus={(e) => {
+                e.target.style.borderColor = 'var(--color-primary)'
+                e.target.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'var(--color-border)'
+                e.target.style.boxShadow = 'none'
+              }}
             />
           </div>
 

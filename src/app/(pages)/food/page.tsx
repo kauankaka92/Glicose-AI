@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, Button, Input, Alert, Badge } from '@/components/UI'
+import { Card, Button, Badge } from '@/components/UI'
 import { saveFood, getFoodEntries, deleteFoodEntry } from '@/lib/storage'
 import { FoodEntry, MealType } from '@/lib/types'
 import { searchFood } from '@/lib/ai-engine'
@@ -26,7 +26,8 @@ export default function FoodPage() {
   const [mealType, setMealType] = useState<MealType>('lunch')
   const [note, setNote] = useState('')
   const [entries, setEntries] = useState<FoodEntry[]>([])
-  const [alert, setAlert] = useState<{ type: 'success' | 'danger'; message: string } | null>(null)
+  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [message, setMessage] = useState('')
   const [searchResults, setSearchResults] = useState<Array<{ name: string; carbs: number }>>([])
 
   const loadEntries = () => {
@@ -100,7 +101,8 @@ export default function FoodPage() {
       }))
 
     if (validItems.length === 0) {
-      setAlert({ type: 'danger', message: 'Adicione pelo menos um alimento' })
+      setStatus('error')
+      setMessage('Adicione pelo menos um alimento')
       return
     }
 
@@ -116,10 +118,14 @@ export default function FoodPage() {
 
     setItems([{ name: '', carbs: '', portion: '' }])
     setNote('')
-    setAlert({ type: 'success', message: `Refeição registrada! Total: ${totalCarbs}g de carboidratos` })
+    setStatus('success')
+    setMessage(`Refeição registrada! Total: ${totalCarbs}g de carboidratos`)
     loadEntries()
 
-    setTimeout(() => setAlert(null), 3000)
+    setTimeout(() => {
+      setStatus('idle')
+      setMessage('')
+    }, 2000)
   }
 
   const handleDelete = (id: string) => {
@@ -129,14 +135,25 @@ export default function FoodPage() {
     }
   }
 
-  const formatDateTime = (iso: string) => {
-    const date = new Date(iso)
-    return date.toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '12px 14px',
+    borderRadius: 'var(--radius-md)',
+    border: '1px solid var(--color-border)',
+    backgroundColor: 'var(--color-bg-secondary)',
+    color: 'var(--color-text-primary)',
+    fontSize: 'var(--font-size-base)',
+    outline: 'none',
+    transition: 'all var(--transition-fast)',
+    fontFamily: 'var(--font-mono)',
+  }
+
+  const labelStyle: React.CSSProperties = {
+    display: 'block',
+    fontSize: 'var(--font-size-sm)',
+    fontWeight: 500,
+    color: 'var(--color-text-secondary)',
+    marginBottom: '6px',
   }
 
   return (
@@ -170,7 +187,21 @@ export default function FoodPage() {
         </p>
       </div>
 
-      {alert && <Alert type={alert.type} onClose={() => setAlert(null)}>{alert.message}</Alert>}
+      {/* Status Message */}
+      {(status === 'success' || status === 'error') && (
+        <div style={{
+          padding: 'var(--spacing-md)',
+          borderRadius: 'var(--radius-md)',
+          marginBottom: 'var(--spacing-xl)',
+          fontSize: 'var(--font-size-sm)',
+          fontWeight: 500,
+          backgroundColor: status === 'success' ? 'var(--color-success-light)' : 'var(--color-danger-light)',
+          color: status === 'success' ? 'var(--color-success)' : 'var(--color-danger)',
+          border: `1px solid ${status === 'success' ? 'var(--color-success)' : 'var(--color-danger)'}`,
+        }}>
+          {message}
+        </div>
+      )}
 
       {/* Form Card */}
       <Card
@@ -181,17 +212,7 @@ export default function FoodPage() {
       >
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: 'var(--spacing-xl)' }}>
-            <label
-              style={{
-                display: 'block',
-                marginBottom: 'var(--spacing-sm)',
-                fontSize: 'var(--font-size-sm)',
-                fontWeight: 500,
-                color: 'var(--color-text-secondary)',
-                letterSpacing: 'var(--letter-spacing-wide)',
-                textTransform: 'uppercase',
-              }}
-            >
+            <label style={labelStyle}>
               Tipo de refeição
             </label>
             <select
@@ -226,27 +247,27 @@ export default function FoodPage() {
           </div>
 
           <div style={{ marginBottom: 'var(--spacing-xl)' }}>
-            <label
-              style={{
-                display: 'block',
-                marginBottom: 'var(--spacing-sm)',
-                fontSize: 'var(--font-size-sm)',
-                fontWeight: 500,
-                color: 'var(--color-text-secondary)',
-                letterSpacing: 'var(--letter-spacing-wide)',
-                textTransform: 'uppercase',
-              }}
-            >
+            <label style={labelStyle}>
               Alimentos
             </label>
 
             {items.map((item, index) => (
               <div key={index} style={{ display: 'flex', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-sm)', position: 'relative' }}>
                 <div style={{ flex: 2 }}>
-                  <Input
+                  <input
+                    type="text"
                     placeholder="Alimento"
                     value={item.name}
                     onChange={(e) => updateItem(index, 'name', e.target.value)}
+                    style={inputStyle}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = 'var(--color-primary)'
+                      e.target.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = 'var(--color-border)'
+                      e.target.style.boxShadow = 'none'
+                    }}
                   />
                   {searchResults.length > 0 && index === items.length - 1 && (
                     <div
@@ -287,19 +308,38 @@ export default function FoodPage() {
                   )}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <Input
-                    placeholder="Carbs (g)"
+                  <input
                     type="number"
+                    placeholder="Carbs (g)"
                     min="0"
                     value={item.carbs}
                     onChange={(e) => updateItem(index, 'carbs', e.target.value)}
+                    style={inputStyle}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = 'var(--color-primary)'
+                      e.target.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = 'var(--color-border)'
+                      e.target.style.boxShadow = 'none'
+                    }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <Input
+                  <input
+                    type="text"
                     placeholder="Porção"
                     value={item.portion}
                     onChange={(e) => updateItem(index, 'portion', e.target.value)}
+                    style={inputStyle}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = 'var(--color-primary)'
+                      e.target.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = 'var(--color-border)'
+                      e.target.style.boxShadow = 'none'
+                    }}
                   />
                 </div>
                 {items.length > 1 && (
@@ -366,12 +406,23 @@ export default function FoodPage() {
           </div>
 
           <div style={{ marginBottom: 'var(--spacing-xl)' }}>
-            <Input
-              label="Observação (opcional)"
+            <label style={labelStyle}>
+              Observação (opcional)
+            </label>
+            <input
+              type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Ex: Restaurante japonês"
-              multiline
+              style={inputStyle}
+              onFocus={(e) => {
+                e.target.style.borderColor = 'var(--color-primary)'
+                e.target.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'var(--color-border)'
+                e.target.style.boxShadow = 'none'
+              }}
             />
           </div>
 
@@ -417,7 +468,7 @@ export default function FoodPage() {
                       color: 'var(--color-text-tertiary)',
                     }}
                   >
-                    {formatDateTime(entry.timestamp)}
+                    {new Date(entry.timestamp).toLocaleString('pt-BR')}
                   </span>
                 </div>
                 <div

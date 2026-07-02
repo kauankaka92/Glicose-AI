@@ -31,7 +31,13 @@ export async function POST(request: NextRequest) {
 
     // Obter configurações e dados atuais
     const settings = getSettings()
+    console.log('=== CHAT API DEBUG ===')
+    console.log('Settings:', settings)
+    console.log('Incoming message:', messageText)
+
     const glucoseEntries = getGlucoseEntries()
+    console.log('Glucose entries count:', glucoseEntries.length)
+
     const stats = calculateGlucoseStats(glucoseEntries)
     const trend = calculateTrend(glucoseEntries)
     const lastGlucose = glucoseEntries.length > 0 ? glucoseEntries[glucoseEntries.length - 1] : null
@@ -40,34 +46,38 @@ export async function POST(request: NextRequest) {
 
     // PRIMEIRO: Tentar detectar e registrar dados diretamente
     const text = messageText.toLowerCase()
-    console.log('Chat received:', messageText)
     console.log('Text lowercase:', text)
 
     let directResponse: { response: string; actions: ChatAction[] } | null = null
 
     // Detectar glicose com valor numérico
     const glucoseMatch = text.match(/glicose.*?(\d{2,3})|(\d{2,3}).*?mg|ao acordar.*?(\d{2,3})|(\d{2,3}).*?ao acordar/i)
-    console.log('Glucose match:', glucoseMatch)
+    console.log('Glucose match result:', glucoseMatch)
     const glucoseValue = glucoseMatch?.[1] || glucoseMatch?.[2] || glucoseMatch?.[3] || glucoseMatch?.[4] ?
       parseInt(glucoseMatch?.[1] || glucoseMatch?.[2] || glucoseMatch?.[3] || glucoseMatch?.[4]) : null
-    console.log('Glucose value:', glucoseValue)
+    console.log('Glucose value parsed:', glucoseValue)
 
     // Detectar contexto
     let context = 'other'
+    console.log('Checking context in:', text)
     if (text.includes('ao acordar') || text.includes('jejum')) context = 'fasting'
     else if (text.includes('antes')) context = 'before_meal'
     else if (text.includes('depois') || text.includes('após')) context = 'after_meal'
     else if (text.includes('dormir') || text.includes('cama')) context = 'bedtime'
     else if (text.includes('madrugada')) context = 'night'
     else if (text.includes('exercício') || text.includes('treino')) context = 'exercise'
+    console.log('Context detected:', context)
 
     // Detectar insulina/unidades
     const insulinMatch = text.match(/(\d+[.,]?\d*)\s*(unidade|insulina|u)[s]?/i)
+    console.log('Insulin match result:', insulinMatch)
     const insulinValue = insulinMatch ? parseFloat(insulinMatch[1].replace(',', '.')) : null
+    console.log('Insulin value parsed:', insulinValue)
 
     // SE tiver glicose E insulina na mesma mensagem -> registrar ambos
     if (glucoseValue && insulinValue) {
       const note = text.replace(/glicose|ao acordar|jejum|\d+/gi, '').trim().substring(0, 50)
+      console.log('Saving BOTH - Glucose:', glucoseValue, 'Insulin:', insulinValue, 'Context:', context, 'Note:', note)
 
       saveGlucose({
         value: glucoseValue,
@@ -75,6 +85,7 @@ export async function POST(request: NextRequest) {
         context: context as any,
         note: note || 'Registro via chat',
       })
+      console.log('Glucose saved successfully')
 
       saveInsulin({
         correction: insulinValue,
@@ -84,6 +95,7 @@ export async function POST(request: NextRequest) {
         glucoseValue: glucoseValue,
         note: note || 'Correção via chat',
       })
+      console.log('Insulin saved successfully')
 
       directResponse = {
         response: `✅ Registrado! Glicose: ${glucoseValue} mg/dL (${context}) e Insulina: ${insulinValue}U de correção.`,
@@ -93,6 +105,7 @@ export async function POST(request: NextRequest) {
     // SE tiver só glicose -> registrar glicose
     else if (glucoseValue) {
       const note = text.replace(/glicose|ao acordar|jejum|\d+/gi, '').trim().substring(0, 50)
+      console.log('Saving GLUCOSE ONLY - Value:', glucoseValue, 'Context:', context, 'Note:', note)
 
       saveGlucose({
         value: glucoseValue,
@@ -100,6 +113,7 @@ export async function POST(request: NextRequest) {
         context: context as any,
         note: note || 'Registro via chat',
       })
+      console.log('Glucose saved successfully')
 
       directResponse = {
         response: `✅ Glicose registrada: ${glucoseValue} mg/dL (${context}). ${glucoseValue > 180 ? '⚠️ Está acima do alvo!' : glucoseValue < 70 ? '⚠️ Está baixo!' : '✓ No alvo!'}`,
@@ -109,6 +123,7 @@ export async function POST(request: NextRequest) {
     // SE tiver só insulina -> registrar insulina
     else if (insulinValue) {
       const note = text.replace(/unidade|insulina|\d+/gi, '').trim().substring(0, 50)
+      console.log('Saving INSULIN ONLY - Value:', insulinValue, 'Note:', note)
 
       saveInsulin({
         correction: insulinValue,
@@ -117,6 +132,7 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString(),
         note: note || 'Registro via chat',
       })
+      console.log('Insulin saved successfully')
 
       directResponse = {
         response: `✅ Insulina registrada: ${insulinValue}U.`,
@@ -125,8 +141,10 @@ export async function POST(request: NextRequest) {
     }
     // Detectar carboidratos/comida
     const carbsMatch = text.match(/(\d+)\s*(g|grama|carb)/i) || text.match(/carb.*?(\d+)/i)
+    console.log('Carbs match result:', carbsMatch)
     if (carbsMatch && !directResponse) {
       const carbs = parseInt(carbsMatch[1])
+      console.log('Saving CARBS - Value:', carbs)
       const mealDose = Math.round((carbs / settings.carbRatio) * 10) / 10
 
       saveFood({
@@ -136,6 +154,7 @@ export async function POST(request: NextRequest) {
         mealType: 'lunch',
         note: text.substring(0, 50),
       })
+      console.log('Food saved successfully')
 
       directResponse = {
         response: `✅ Carboidratos registrados: ${carbs}g. Dose sugerida: ${mealDose}U de insulina.`,
@@ -145,6 +164,8 @@ export async function POST(request: NextRequest) {
 
     // Se detectou algo diretamente, retorna sem chamar API
     if (directResponse) {
+      console.log('=== DIRECT RESPONSE - SKIPPING AI ===')
+      console.log('Response:', directResponse.response)
       return NextResponse.json({
         success: true,
         data: {
@@ -154,6 +175,8 @@ export async function POST(request: NextRequest) {
         },
       })
     }
+
+    console.log('=== NO DIRECT MATCH - CALLING AI ===')
 
     // SEGUNDO: Se não detectou nada direto, chama a IA para responder perguntas
     const systemPrompt = `Você é um assistente de diabetes. Responda de forma DIRETA e ÚTIL.
