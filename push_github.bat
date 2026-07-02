@@ -18,7 +18,11 @@ if not exist ".git" (
 )
 echo.
 
-echo [2/6] Configurando remote origin...
+echo [2/6] Configurando usuario Git e remote origin...
+git config user.email "leitekauan538@gmail.com"
+git config user.name "kauankaka92"
+echo       Usuario: kauankaka92 / leitekauan538@gmail.com
+echo.
 git remote remove origin 2>nul
 git remote add origin https://github.com/kauankaka92/Glicose-AI.git
 echo       OK: https://github.com/kauankaka92/Glicose-AI.git
