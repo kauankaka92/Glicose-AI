@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, Button, Alert, Container } from '@/components/UI'
 import { getSettings, saveSettings, exportData, importData, clearAllData } from '@/lib/storage'
 import { UserSettings } from '@/lib/types'
+import { SettingsIcon } from '@/components/SVGIcons'
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<UserSettings>({
@@ -175,7 +176,10 @@ export default function SettingsPage() {
             alignItems: 'center',
           }}
         >
-          Tratamento
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <SettingsIcon size={24} style={{ color: 'var(--color-primary)' }} />
+            Tratamento
+          </div>
           {!saved && (
             <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-primary)', animation: 'pulse-glow 1s ease-in-out infinite' }}>
               Salvando...
