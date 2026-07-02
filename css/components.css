@@ -34,7 +34,7 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent) 0%, #e11d48 100%);
+  background: var(--accent);
   color: white;
   box-shadow: 0 2px 12px var(--accent-glow);
 }
@@ -42,7 +42,7 @@
 .btn-primary:hover, .btn-primary:focus-visible {
   box-shadow: 0 4px 20px var(--accent-glow);
   transform: translateY(-1px);
-  filter: brightness(1.08);
+  filter: brightness(1.06);
 }
 
 .btn-primary:active { transform: translateY(0); filter: brightness(0.96); }
@@ -106,8 +106,8 @@
   right: 20px;
   width: 58px;
   height: 58px;
-  border-radius: var(--radius-full);
-  background: linear-gradient(135deg, var(--accent) 0%, #e11d48 100%);
+  border-radius: var(--radius-lg);
+  background: var(--accent);
   color: white;
   display: flex;
   align-items: center;
@@ -136,7 +136,7 @@
 .card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
-  border-color: rgba(255, 71, 102, 0.15);
+  border-color: rgba(220, 74, 59, 0.12);
 }
 
 .card-glass {
@@ -155,10 +155,9 @@
 
 .card-title {
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.02em;
 }
 
 /* ── Form Elements ───────────────────────────────────────────────────── */
@@ -291,11 +290,10 @@
   display: inline-flex;
   align-items: center;
   padding: 3px 9px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-sm);
   font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .badge-success { background: var(--success-light); color: var(--success); }
@@ -420,7 +418,7 @@
   align-items: center;
   gap: 4px;
   padding: 6px 14px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-sm);
   font-size: 0.8125rem;
   font-weight: 600;
   background: var(--surface-2);

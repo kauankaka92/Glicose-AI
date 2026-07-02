@@ -34,7 +34,7 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+  background: var(--accent);
   color: white;
   box-shadow: 0 2px 12px var(--accent-glow);
 }
@@ -42,7 +42,7 @@
 .btn-primary:hover, .btn-primary:focus-visible {
   box-shadow: 0 4px 20px var(--accent-glow);
   transform: translateY(-1px);
-  filter: brightness(1.08);
+  filter: brightness(1.06);
 }
 
 .btn-primary:active { transform: translateY(0); filter: brightness(0.96); }
@@ -106,8 +106,8 @@
   right: 20px;
   width: 58px;
   height: 58px;
-  border-radius: var(--radius-full);
-  background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+  border-radius: var(--radius-lg);
+  background: var(--accent);
   color: white;
   display: flex;
   align-items: center;
@@ -126,15 +126,23 @@
   background: var(--bg-card);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
-  padding: 16px;
+  padding: 20px;
   box-shadow: var(--shadow-sm);
-  transition: box-shadow var(--transition), border-color var(--transition);
+  transition: transform var(--transition-spring), box-shadow var(--transition), border-color var(--transition);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(220, 74, 59, 0.12);
 }
 
 .card-glass {
   background: var(--bg-glass);
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid var(--border-strong);
 }
 
@@ -147,10 +155,9 @@
 
 .card-title {
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.02em;
 }
 
 /* ── Form Elements ───────────────────────────────────────────────────── */
@@ -283,11 +290,10 @@
   display: inline-flex;
   align-items: center;
   padding: 3px 9px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-sm);
   font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .badge-success { background: var(--success-light); color: var(--success); }
@@ -412,7 +418,7 @@
   align-items: center;
   gap: 4px;
   padding: 6px 14px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-sm);
   font-size: 0.8125rem;
   font-weight: 600;
   background: var(--surface-2);
