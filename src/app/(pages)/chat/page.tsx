@@ -11,7 +11,7 @@ import {
   setCurrentConversationId,
   ChatConversation,
 } from '@/lib/chat-storage'
-import { saveGlucose, saveFood, saveInsulin } from '@/lib/storage'
+import { saveGlucose, saveFood, saveInsulin, saveSystemEvent } from '@/lib/storage'
 
 // ============================================
 // FUNÇÕES AUXILIARES PARA STREAM
@@ -168,7 +168,7 @@ export default function Chat() {
       for (const evt of glucoseEvents) {
         if (evt.value) {
           try {
-            const saved = saveGlucose({
+            const saved = await saveGlucose({
               value: evt.value,
               context: evt.context as any,
               timestamp: evt.timestamp || new Date().toISOString(),
@@ -191,7 +191,7 @@ export default function Chat() {
             const description = (evt as any).description
             const displayItems = description ? [description] : evt.items
 
-            const saved = saveFood({
+            const saved = await saveFood({
               items: displayItems.map(name => ({ name, carbs: Math.round(totalCarbs / displayItems.length) })),
               totalCarbs,
               mealType: mapMealType(evt.meal),
@@ -228,7 +228,7 @@ export default function Chat() {
 
           console.log('[CHAT] Insulin order:', evtOrder, 'glucose antes:', lastGlucoseBefore?.value, 'order:', lastGlucoseBefore?.order)
 
-          const saved = saveInsulin({
+          const saved = await saveInsulin({
             correction: insulinEvent.dose,
             meal: 0,
             total: insulinEvent.dose,
@@ -246,7 +246,7 @@ export default function Chat() {
       if (event.insulin && event.insulin.total > 0) {
         try {
           const lastGlucose = glucoseEvents[glucoseEvents.length - 1]
-          const saved = saveInsulin({
+          const saved = await saveInsulin({
             correction: event.insulin.correction,
             meal: event.insulin.meal,
             total: event.insulin.total,
@@ -261,6 +261,15 @@ export default function Chat() {
 
       if (event.ui_update) {
         notifyDataChange()
+        // Log de auditoria para data change
+        saveSystemEvent({
+          type: 'data_change',
+          timestamp: new Date().toISOString(),
+          severity: 'info',
+          details: { eventsCount: event.stream?.events.length || 1 },
+          source: 'client',
+          version: '1.0.0'
+        })
       }
       return // Sai early, stream já foi processado
     }
@@ -271,7 +280,7 @@ export default function Chat() {
     // Ação: save_glucose - SALVAR DIRETAMENTE NO LOCALSTORAGE DO CLIENTE
     if (event.actions.includes('save_glucose') && event.data.glucose) {
       try {
-        const saved = saveGlucose({
+        const saved = await saveGlucose({
           value: event.data.glucose,
           context: event.data.context as any,
           timestamp: new Date().toISOString()
@@ -285,7 +294,7 @@ export default function Chat() {
     // Ação: save_food - SALVAR DIRETAMENTE NO LOCALSTORAGE DO CLIENTE
     if (event.actions.includes('save_food') && event.data.meal) {
       try {
-        const saved = saveFood({
+        const saved = await saveFood({
           items: event.data.meal.map(name => ({ name, carbs: Math.round((event.data.carbs_estimate || 0) / event.data.meal!.length) })),
           totalCarbs: event.data.carbs_estimate || 0,
           mealType: event.data.context as any,
@@ -300,7 +309,7 @@ export default function Chat() {
     // Ação: calculate_dose / save_insulin - SALVAR DIRETAMENTE NO LOCALSTORAGE DO CLIENTE
     if (event.insulin && event.insulin.total > 0) {
       try {
-        const saved = saveInsulin({
+        const saved = await saveInsulin({
           correction: event.insulin.correction,
           meal: event.insulin.meal,
           total: event.insulin.total,
@@ -382,8 +391,8 @@ export default function Chat() {
       }
 
       setMessages(prev => [...prev, assistantMessage])
-      addMessage(currentConversationId, userMessage)
-      addMessage(currentConversationId, assistantMessage)
+      await addMessage(currentConversationId, userMessage)
+      await addMessage(currentConversationId, assistantMessage)
 
     } catch (error) {
       console.error('[CHAT] Erro:', error)

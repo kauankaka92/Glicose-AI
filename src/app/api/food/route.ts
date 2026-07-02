@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       note,
     }
 
-    const saved = saveFood(entry)
+    const saved = await saveFood(entry)
 
     return NextResponse.json({
       success: true,

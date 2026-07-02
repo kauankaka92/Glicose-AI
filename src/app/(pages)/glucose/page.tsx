@@ -30,7 +30,7 @@ export default function GlucosePage() {
     setEntries(sorted.slice(0, 50))
   }, [])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const numValue = parseFloat(value)
@@ -40,7 +40,7 @@ export default function GlucosePage() {
       return
     }
 
-    saveGlucose({
+    await saveGlucose({
       value: numValue,
       timestamp: new Date().toISOString(),
       context,

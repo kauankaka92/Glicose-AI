@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       note,
     }
 
-    const saved = saveGlucose(entry)
+    const saved = await saveGlucose(entry)
 
     return NextResponse.json({
       success: true,

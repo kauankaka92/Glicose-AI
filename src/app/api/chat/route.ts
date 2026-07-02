@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { saveGlucose, saveFood, saveInsulin, getSettings, getGlucoseEntries } from '@/lib/storage'
-import { GLUCOSE_STATUS, getGlucoseStatus, getGlucoseStatusLabel } from '@/lib/types'
+import { getSettings } from '@/lib/storage'
+import { getGlucoseStatusLabel } from '@/lib/types'
 
 /**
  * MOTOR DE DADOS DO GLICOSE AI
@@ -19,7 +19,10 @@ import { GLUCOSE_STATUS, getGlucoseStatus, getGlucoseStatusLabel } from '@/lib/t
  * Cada input do usuário pode gerar múltiplos eventos independentes
  */
 interface ClinicalEvent {
+  id: string                         // ID determinístico para auditabilidade
   type: 'glucose_event' | 'food_event' | 'insulin_event' | 'insulin_context'
+  version: string                    // Versão do schema (ex: "1.0.0")
+  source: 'client' | 'server'        // Origem do evento
   value?: number
   items?: string[]
   description?: string
@@ -27,8 +30,9 @@ interface ClinicalEvent {
   dose?: number
   context?: string
   meal?: string
-  order: number
-  timestamp?: string
+  order: number                      // Ordem para associação (ex: insulina -> glicose)
+  timestamp: string
+  refs?: Record<string, string>      // Referências para outros eventos
 }
 
 interface EventStream {
@@ -172,14 +176,21 @@ export async function POST(request: NextRequest) {
     // Ordenar por posição no texto e criar eventos
     allGlucoseMatches.sort((a, b) => a.index - b.index)
 
+    const eventTimestamp = new Date().toISOString()
+    const eventSource: 'client' | 'server' = 'server'
+    const eventVersion = '1.0.0'
+
     for (const { value, context: ctx, index } of allGlucoseMatches) {
       eventOrder++
       events.push({
+        id: `glucose-${Date.now()}-${eventOrder}`,
         type: 'glucose_event',
+        version: eventVersion,
+        source: eventSource,
         value,
         context: ctx || undefined,
         order: eventOrder,
-        timestamp: new Date().toISOString()
+        timestamp: eventTimestamp
       })
       console.log('[STREAM DE EVENTOS] Glicose detectada:', value, 'contexto:', ctx, 'ordem:', eventOrder)
     }
@@ -295,24 +306,30 @@ export async function POST(request: NextRequest) {
     for (const { items, meal, carbs, description, insulin } of allFoods) {
       eventOrder++
       events.push({
+        id: `food-${Date.now()}-${eventOrder}`,
         type: 'food_event',
+        version: eventVersion,
+        source: eventSource,
         items,
         description,
         meal,
         insulin,
         order: eventOrder,
-        timestamp: new Date().toISOString()
+        timestamp: eventTimestamp
       })
 
       // Se tem insulina associada, cria evento separado de insulina
       if (insulin && insulin > 0) {
         eventOrder++
         events.push({
+          id: `insulin-${Date.now()}-${eventOrder}`,
           type: 'insulin_event',
+          version: eventVersion,
+          source: eventSource,
           dose: insulin,
           meal,
           order: eventOrder,
-          timestamp: new Date().toISOString()
+          timestamp: eventTimestamp
         })
         console.log('[STREAM DE EVENTOS] Evento de insulina criado:', insulin, 'U para', meal)
       }
@@ -453,101 +470,10 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================
-    // 6. SALVAR DADOS NO STORAGE - STREAM
+    // 6. RETORNAR EVENTO - SEM PERSISTIR DADOS
     // ============================================
-    const savedData: Record<string, unknown> = {}
-    const savedEvents: any[] = []
-
-    // Salvar TODAS as glicoses detectadas
-    for (const evt of events.filter(e => e.type === 'glucose_event')) {
-      const saved = saveGlucose({
-        value: evt.value!,
-        timestamp: evt.timestamp || new Date().toISOString(),
-        context: evt.context as any,
-        note: message
-      })
-      savedEvents.push({ type: 'glucose', ...saved })
-    }
-
-    if (events.some(e => e.type === 'glucose_event')) {
-      savedData.glucose = savedEvents.filter(e => e.type === 'glucose')
-    }
-
-    // Salvar TODAS as refeicoes detectadas
-    const savedFoods: any[] = []
-    const foodEventsToSave = events.filter(e => e.type === 'food_event')
-    console.log('[MOTOR DE DADOS] Food events para salvar:', foodEventsToSave.length)
-
-    for (const evt of foodEventsToSave) {
-      const foodEvent = evt as ClinicalEvent & { items: string[], meal: string }
-      console.log('[MOTOR DE DADOS] Salvando food_event:', foodEvent.meal, foodEvent.items)
-      const totalCarbs = estimateCarbs(foodEvent.items, '')
-      const saved = saveFood({
-        items: foodEvent.items.map(name => ({ name, carbs: Math.round(totalCarbs / foodEvent.items.length) })),
-        totalCarbs,
-        timestamp: evt.timestamp || new Date().toISOString(),
-        mealType: (foodEvent.meal === 'breakfast' || foodEvent.meal === 'lunch' || foodEvent.meal === 'dinner') ? foodEvent.meal : undefined
-      })
-      savedFoods.push({ type: 'food', ...saved })
-    }
-
-    if (savedFoods.length > 0) {
-      savedData.food = savedFoods
-      console.log('[MOTOR DE DADOS] Alimentos salvos:', savedFoods.length)
-    } else {
-      console.log('[MOTOR DE DADOS] NENHUM alimento salvo')
-    }
-
-    // Salvar TODAS as insulinas do stream (eventos insulin_event)
-    const insulinEventsToSave = events.filter(e => e.type === 'insulin_event')
-    console.log('[MOTOR DE DADOS] Insulin events para salvar:', insulinEventsToSave.length)
-
-    const savedInsulins: any[] = []
-    for (const evt of insulinEventsToSave) {
-      const insulinEvent = evt as ClinicalEvent & { dose: number, meal: string }
-      console.log('[MOTOR DE DADOS] Salvando insulin_event:', insulinEvent.dose, 'U para', insulinEvent.meal)
-
-      // Buscar glicose mais próxima antes deste evento de insulina
-      const insulinIndex = events.findIndex(e => e === evt)
-      const glucoseBefore = events.filter((e, i) =>
-        e.type === 'glucose_event' && i < insulinIndex
-      ).pop()
-
-      const saved = saveInsulin({
-        correction: insulinEvent.dose,
-        meal: 0,
-        total: insulinEvent.dose,
-        timestamp: evt.timestamp || new Date().toISOString(),
-        glucoseValue: glucoseBefore?.value,
-        note: `Insulina para ${insulinEvent.meal}`
-      })
-      savedInsulins.push({ type: 'insulin', ...saved })
-    }
-
-    if (event.insulin && event.insulin.total > 0) {
-      console.log('[MOTOR DE DADOS] Salvando insulina calculada:', event.insulin.total, 'U')
-      savedData.insulin = saveInsulin({
-        correction: event.insulin.correction,
-        meal: event.insulin.meal,
-        total: event.insulin.total,
-        timestamp: new Date().toISOString(),
-        glucoseValue: glucoseValue || undefined,
-        note: message
-      })
-    }
-
-    if (savedInsulins.length > 0) {
-      savedData.insulins = savedInsulins
-      console.log('[MOTOR DE DADOS] Insulinas do stream salvas:', savedInsulins.length)
-    } else {
-      console.log('[MOTOR DE DADOS] Nenhuma insulina do stream para salvar')
-    }
-
-    // ============================================
-    // 7. LOG DO EVENTO
-    // ============================================
-    console.log('[MOTOR DE DADOS] Evento processado:', JSON.stringify(event, null, 2))
-    console.log('[MOTOR DE DADOS] Dados salvos:', savedData)
+    // O servidor APENAS interpreta input e retorna eventos
+    // A persistencia é responsabilidade EXCLUSIVA do cliente (chat/page.tsx)
 
     // ============================================
     // 8. GERAR RESPOSTA CURTA
@@ -583,12 +509,11 @@ export async function POST(request: NextRequest) {
     console.log('[MOTOR DE DADOS] Stream de eventos:', events.length, 'eventos:', JSON.stringify(events, null, 2))
 
     // ============================================
-    // 9. RETORNAR EVENTO + RESPOSTA
+    // 8. RETORNAR EVENTO + RESPOSTA
     // ============================================
     return NextResponse.json({
       success: true,
       event,
-      saved: savedData,
       response
     })
 

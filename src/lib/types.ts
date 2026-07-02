@@ -1,6 +1,12 @@
 // Tipos fundamentais do Glicose AI
 
-export interface GlucoseEntry {
+export interface EventMetadata {
+  version?: string        // versao do schema do evento (ex: "1.0.0")
+  source?: 'client' | 'server' | 'import'  // origem do evento
+  refs?: Record<string, string>  // referências para outros eventos (ex: glucoseRef)
+}
+
+export interface GlucoseEntry extends EventMetadata {
   id: string
   value: number
   timestamp: string
@@ -17,7 +23,7 @@ export type GlucoseContext =
   | 'exercise'
   | 'other'
 
-export interface FoodEntry {
+export interface FoodEntry extends EventMetadata {
   id: string
   items: FoodItem[]
   totalCarbs: number
@@ -40,7 +46,7 @@ export type MealType =
   | 'dinner'
   | 'night_snack'
 
-export interface InsulinEntry {
+export interface InsulinEntry extends EventMetadata {
   id: string
   correction: number
   meal?: number
@@ -142,4 +148,22 @@ export interface ChatConversation {
   messages: ChatMessage[]
   createdAt: string
   updatedAt: string
+}
+
+// System event para auditoria e logging
+export type SystemEventType =
+  | 'data_change'
+  | 'settings_update'
+  | 'import_export'
+  | 'bulk_operation'
+  | 'error'
+  | 'warning'
+
+export interface SystemEvent extends EventMetadata {
+  id: string
+  type: SystemEventType
+  timestamp: string
+  details: Record<string, unknown>
+  severity: 'info' | 'warning' | 'error'
+  note?: string
 }

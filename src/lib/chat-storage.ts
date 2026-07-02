@@ -38,6 +38,26 @@ function saveStorage(conversations: ChatConversation[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations))
 }
 
+// Lock para transações
+const chatTransactionLocks: Record<string, boolean> = {}
+
+async function acquireChatLock(timeout = 5000): Promise<boolean> {
+  const startTime = Date.now()
+  while (chatTransactionLocks['chat']) {
+    if (Date.now() - startTime > timeout) {
+      console.warn('[chat-storage.ts] Lock timeout expired')
+      return false
+    }
+    await new Promise(resolve => setTimeout(resolve, 10))
+  }
+  chatTransactionLocks['chat'] = true
+  return true
+}
+
+function releaseChatLock() {
+  delete chatTransactionLocks['chat']
+}
+
 export function getCurrentConversationId(): string | null {
   if (typeof window === 'undefined') return null
   return localStorage.getItem(CURRENT_CONVERSATION_KEY)
@@ -83,22 +103,29 @@ export function getConversations(): ChatConversation[] {
   return getStorage()
 }
 
-export function addMessage(conversationId: string, message: Omit<ChatMessage, 'id'>): ChatMessage | null {
-  const conversations = getStorage()
-  const conversationIndex = conversations.findIndex(c => c.id === conversationId)
+export async function addMessage(conversationId: string, message: Omit<ChatMessage, 'id'>): Promise<ChatMessage | null> {
+  const acquired = await acquireChatLock()
+  if (!acquired) return null
 
-  if (conversationIndex === -1) return null
+  try {
+    const conversations = getStorage()
+    const conversationIndex = conversations.findIndex(c => c.id === conversationId)
 
-  const newMessage: ChatMessage = {
-    ...message,
-    id: generateId(),
+    if (conversationIndex === -1) return null
+
+    const newMessage: ChatMessage = {
+      ...message,
+      id: generateId(),
+    }
+
+    conversations[conversationIndex].messages.push(newMessage)
+    conversations[conversationIndex].updatedAt = new Date().toISOString()
+
+    saveStorage(conversations)
+    return newMessage
+  } finally {
+    releaseChatLock()
   }
-
-  conversations[conversationIndex].messages.push(newMessage)
-  conversations[conversationIndex].updatedAt = new Date().toISOString()
-
-  saveStorage(conversations)
-  return newMessage
 }
 
 export function deleteConversation(id: string): boolean {

@@ -89,7 +89,7 @@ export default function FoodPage() {
     return items.reduce((sum, item) => sum + (parseFloat(item.carbs) || 0), 0)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const validItems = items
@@ -108,7 +108,7 @@ export default function FoodPage() {
 
     const totalCarbs = calculateTotalCarbs()
 
-    saveFood({
+    await saveFood({
       items: validItems,
       totalCarbs,
       timestamp: new Date().toISOString(),

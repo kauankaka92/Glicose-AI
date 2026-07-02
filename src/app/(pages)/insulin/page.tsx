@@ -48,7 +48,7 @@ export default function InsulinPage() {
     }
   }, [glucose, carbs])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const totalValue = parseFloat(total)
@@ -57,7 +57,7 @@ export default function InsulinPage() {
       return
     }
 
-    saveInsulin({
+    await saveInsulin({
       correction: parseFloat(correction) || 0,
       meal: parseFloat(meal) || 0,
       total: totalValue,

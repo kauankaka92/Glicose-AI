@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       note,
     }
 
-    const saved = saveInsulin(entry)
+    const saved = await saveInsulin(entry)
 
     return NextResponse.json({
       success: true,

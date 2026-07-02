@@ -102,7 +102,7 @@ function extractGlucoseValue(text: string): number | null {
     const match = text.match(pattern)
     if (match) {
       const value = parseInt(match[1], 10)
-      if (value >= 40 && value <= 600) {
+      if (value >= 20 && value <= 600) {
         return value
       }
     }
@@ -152,6 +152,25 @@ function extractCarbs(text: string): number | null {
     const match = text.match(pattern)
     if (match) {
       return parseFloat(match[1])
+    }
+  }
+  return null
+}
+
+function extractInsulin(text: string): number | null {
+  // Extrair insulina de parênteses: "(X unidades)", "(XU)", "(X unidades de insulina)"
+  const patterns = [
+    /\((\d+(?:\.\d+)?)\s*(?:unidades?|u)\s*(?:de\s+insulina)?\)/i,
+    /(\d+(?:\.\d+)?)\s*(?:unidades?|u)\s*(?:de\s+)?(?:insulina)?/i,
+  ]
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern)
+    if (match) {
+      const value = parseFloat(match[1])
+      if (value > 0 && value <= 100) {
+        return value
+      }
     }
   }
   return null
@@ -238,6 +257,7 @@ export function interpretNaturalLanguage(input: string): AIInterpretation {
   const context = extractContext(text)
   const explicitCarbs = extractCarbs(text)
   const estimatedCarbs = foods.length > 0 ? estimateCarbs(foods) : undefined
+  const insulin = extractInsulin(text)
 
   return {
     type: 'event',
@@ -245,6 +265,7 @@ export function interpretNaturalLanguage(input: string): AIInterpretation {
     meal: foods.length > 0 ? foods : undefined,
     carbs: explicitCarbs || estimatedCarbs,
     context,
+    insulin: insulin || undefined,
     action: 'save',
     summary: '',
   }
