@@ -39,6 +39,7 @@ function mapMealType(meal?: string): any {
     'breakfast': 'breakfast',
     'lunch': 'lunch',
     'dinner': 'dinner',
+    'snack': 'snack',
     'general': undefined
   }
   return map[meal] || undefined

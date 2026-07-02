@@ -214,15 +214,14 @@ export async function POST(request: NextRequest) {
 
     // Segmentar texto por marcadores de refeição - CAPTURAR APENAS ITENS
     const mealSegmentPatterns = [
-      // Café da manhã: captura até próximo marcador OU até "No almoço"
-      { pattern: /(?:cafe|café|café da manhã|cafe da manha)\s*[:\-]?\s*(.+?)(?=(?:\bno\s+almoço|\bno\s+almoco|\bantes\s+do\s+almoço|\balmoco|almoço|janta|jantar|$))/gi, meal: 'breakfast' },
-      // Almoço: captura até próximo marcador OU até frase final
-      { pattern: /(?:almoco|almoço)\s*[:\-]?\s*(.+?)(?=(?:\bno\s+jantar|\bjanta|\bdepois\s+do\s+almoço|\bcafe|café|$))/gi, meal: 'lunch' },
+      // Café da manhã: captura até próximo marcador
+      { pattern: /(?:cafe|café|café da manhã|cafe da manha)\s*[:\-]?\s*(.+?)(?=(?:\bno\s+almoço|\bno\s+almoco|\bantes\s+do\s+almoço|\bapos\s+o\s+almoço|\bdepois\s+do\s+almoço|\balmoco|almoço|janta|jantar|$))/gi, meal: 'breakfast' },
+      // Almoço: captura até "depois do almoço" ou jantar
+      { pattern: /(?:almoco|almoço)\s*[:\-]?\s*(.+?)(?=(?:\bdepois\s+do\s+almoço|\bapos\s+o\s+almoço|\bno\s+jantar|\bjanta|\bcafe|café|$))/gi, meal: 'lunch' },
+      // Lanche pós-almoço: captura até próximo marcador
+      { pattern: /(?:depois\s+do\s+almoço|apos\s+o\s+almoço)\s*[:\-]?\s*(.+?)(?=(?:\bno\s+jantar|\bjanta|\bcafe|café|\balmoco|almoço|$))/gi, meal: 'snack' },
       // Jantar: captura até fim
       { pattern: /(?:janta|jantar)\s*[:\-]?\s*(.+?)(?=(?:\bcafe|café|\balmoco|almoço|$))/gi, meal: 'dinner' },
-      // Padrão alternativo: lista com bullets (-)
-      { pattern: /(?:café|cafe|café da manhã|cafe da manha)\s*[:\-]?\s*([\s\S]*?)(?=\bno\s+almoço|\balmoco|almoço|\bjantar|janta|$)/gi, meal: 'breakfast' },
-      { pattern: /(?:almoço|almoco)\s*[:\-]?\s*([\s\S]*?)(?=\bjantar|janta|\bcafé|\bcafe|$)/gi, meal: 'lunch' },
     ]
 
     const allFoods: { items: string[]; meal: string; carbs: number; description: string }[] = []
@@ -232,15 +231,18 @@ export async function POST(request: NextRequest) {
       while ((match = pattern.exec(message)) !== null) {
         let segment = match[1].trim()
 
-        // Limpar segmento: remover prefixos "eu comi:", "da manhã eu comi:", etc
+        // Limpar segmento: remover prefixos
         segment = segment.replace(/^(?:da\s+manhã|da\s+manha|da\s+tarde|da\s+noite|do\s+almoço|do\s+café|do\s+cafe)\s+/i, '')
-        segment = segment.replace(/^(?:eu\s+)?comi[:\-]?\s*/i, '')
+        segment = segment.replace(/^(?:eu\s+)?(comi|consumi)\s*[:\-]?\s*/i, '')
         segment = segment.replace(/^no\s+(?:café|cafe|almoço|almoco|janta|jantar)\s+/i, '')
+        segment = segment.replace(/^depois\s+do\s+almoço\s+/i, '')
+        segment = segment.replace(/^apos\s+o\s+almoço\s+/i, '')
 
         // Limpar segmento: remover texto após palavras de contexto indesejado
-        segment = segment.replace(/\s*(?:no\s+total|antes\s+de|depois\s+de|quero\s+que|como\s+está|minha\s+evolução|se\s+preciso).*$/i, '')
+        segment = segment.replace(/\s*(?:no\s+total|antes\s+de|depois\s+de|quero\s+que|como\s+está|minha\s+evolução|se\s+preciso|sobre\s+correcao|sobre\s+correção).*$/i, '')
         segment = segment.replace(/^-+\s*/g, '') // remover bullets no início
         segment = segment.replace(/\n+/g, ' ') // substituir newlines por espaço
+        segment = segment.replace(/\s+/g, ' ') // normalizar espaços
 
         // Se segmento for muito pequeno (< 3 chars), ignorar
         if (segment.length < 3) continue
