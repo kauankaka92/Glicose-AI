@@ -188,13 +188,24 @@ Assistant: "Para 200 mg/dL: (200 - ${settings.targetGlucose}) / ${settings.corre
     if (!response.ok) {
       const errorData = await response.text()
       console.error('NVIDIA API Error:', response.status, errorData)
+      console.warn('FALLING BACK: Using rule-based responses')
 
-      // Fallback amistoso
+      // Fallback com respostas baseadas em regras (sem API)
+      const fallbackResponse = text.includes('glicose') && glucoseValue
+        ? `Glicose de ${glucoseValue} mg/dL registrada. ${glucoseValue > 180 ? '⚠️ Acima do alvo!' : glucoseValue < 70 ? '⚠️ Hipoglicemia!' : '✓ No alvo!'}`
+        : text.includes('insulin') || text.includes('unidade')
+        ? `Insulina registrada. ${insulinValue ? `${insulinValue}U aplicadas.` : ''}`
+        : text.includes('carb') || text.includes('comi') || text.includes('refeição')
+        ? 'Refeição registrada. Lembre-se de calcular a insulina baseada nos carboidratos.'
+        : text.includes('dose') || text.includes('calcular') || text.includes('quanto')
+        ? `Use: (glicose atual - ${settings.targetGlucose}) / ${settings.correctionFactor} = dose de correção. Ex: (200 - ${settings.targetGlucose}) / ${settings.correctionFactor} = ${(200 - settings.targetGlucose) / settings.correctionFactor}U`
+        : 'Olá! Digite sua glicose (ex: "glicose 120") ou insulina (ex: "tomei 2 unidades") para registrar. Para perguntas, use "qual minha dose pra X de glicose?"'
+
       return NextResponse.json({
         success: true,
         data: {
-          response: "Não consegui conectar ao servidor. Para registrar glicose, diga 'glicose 120' ou 'registre 150 de glicose'. Para insulina, diga 'tomei 2 unidades'.",
-          actions: [],
+          response: fallbackResponse,
+          actions: directResponse?.actions || [],
           timestamp: new Date().toISOString(),
         },
       })
