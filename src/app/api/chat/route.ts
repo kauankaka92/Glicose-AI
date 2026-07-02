@@ -186,13 +186,17 @@ export async function POST(request: NextRequest) {
       'unidades', 'u', 'ui', 'correea', 'corri'
     ]
 
-    // Segmentar texto por marcadores de refeição
+    // Segmentar texto por marcadores de refeição - CAPTURAR APENAS ITENS
     const mealSegmentPatterns = [
-      { pattern: /(?:cafe|café|café da manhã|cafe da manha)\s*[:\-]?\s*(.+?)(?=(?:almoco|almoço|janta|jantar|$))/gi, meal: 'breakfast' },
-      { pattern: /(?:almoco|almoço)\s*[:\-]?\s*(.+?)(?=(?:janta|jantar|cafe|café|$))/gi, meal: 'lunch' },
-      { pattern: /(?:janta|jantar)\s*[:\-]?\s*(.+?)(?=(?:cafe|café|almoco|almoço|$))/gi, meal: 'dinner' },
-      { pattern: /(?:comi|almocei|jantei|lanchiei)\s+(.+?)(?=\.|$)/gi, meal: 'general' },
-      { pattern: /(?:tomei|bebi)\s+(.+?)(?=\.|$)/gi, meal: 'general' },
+      // Café da manhã: captura até próximo marcador OU até "No almoço"
+      { pattern: /(?:cafe|café|café da manhã|cafe da manha)\s*[:\-]?\s*(.+?)(?=(?:\bno\s+almoço|\bno\s+almoco|\bantes\s+do\s+almoço|\balmoco|almoço|janta|jantar|$))/gi, meal: 'breakfast' },
+      // Almoço: captura até próximo marcador OU até frase final
+      { pattern: /(?:almoco|almoço)\s*[:\-]?\s*(.+?)(?=(?:\bno\s+jantar|\bjanta|\bdepois\s+do\s+almoço|\bcafe|café|$))/gi, meal: 'lunch' },
+      // Jantar: captura até fim
+      { pattern: /(?:janta|jantar)\s*[:\-]?\s*(.+?)(?=(?:\bcafe|café|\balmoco|almoço|$))/gi, meal: 'dinner' },
+      // Padrão alternativo: lista com bullets (-)
+      { pattern: /(?:café|cafe|café da manhã|cafe da manha)\s*[:\-]?\s*([\s\S]*?)(?=\bno\s+almoço|\balmoco|almoço|\bjantar|janta|$)/gi, meal: 'breakfast' },
+      { pattern: /(?:almoço|almoco)\s*[:\-]?\s*([\s\S]*?)(?=\bjantar|janta|\bcafé|\bcafe|$)/gi, meal: 'lunch' },
     ]
 
     const allFoods: { items: string[]; meal: string; carbs: number; description: string }[] = []
@@ -200,15 +204,23 @@ export async function POST(request: NextRequest) {
     for (const { pattern, meal } of mealSegmentPatterns) {
       let match
       while ((match = pattern.exec(message)) !== null) {
-        const segment = match[1].toLowerCase()
-        const foodsInSegment = foodKeywords.filter(kw => segment.includes(kw))
+        let segment = match[1].trim()
+
+        // Limpar segmento: remover texto após palavras de contexto indesejado
+        segment = segment.replace(/\s*(?:no\s+total|antes\s+de|depois\s+de|quero\s+que|como\s+está|minha\s+evolução|se\s+preciso).*$/i, '')
+        segment = segment.replace(/^-+\s*/g, '') // remover bullets no início
+
+        // Se segmento for muito pequeno (< 3 chars), ignorar
+        if (segment.length < 3) continue
+
+        const foodsInSegment = foodKeywords.filter(kw => segment.toLowerCase().includes(kw))
           .filter(f => !excludeWords.includes(f))
 
         if (foodsInSegment.length > 0) {
           const uniqueFoods = [...new Set(foodsInSegment)]
           const carbs = estimateCarbs(uniqueFoods, segment)
-          // Salvar descrição COMPLETA da refeição (texto bruto)
-          const description = match[1].trim()
+          // Salvar descrição COMPLETA da refeição (texto bruto limpo)
+          const description = segment
           allFoods.push({ items: uniqueFoods, meal, carbs, description })
           console.log('[STREAM DE EVENTOS] Refeição detectada:', meal, 'alimentos:', uniqueFoods, 'carbs:', carbs, 'descricao:', description)
         }
