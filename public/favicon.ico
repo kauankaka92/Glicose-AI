@@ -1,0 +1,9 @@
+/**
+ * Glicose AI - v4.0.0
+ * Sistema de monitoramento de glicose com IA
+ *
+ * Copyright (c) 2026
+ * Licensed under MIT
+ */
+
+console.log('Glicose AI initialized')

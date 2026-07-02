@@ -1,4 +1,12 @@
+node_modules
+.next
 .env
-node_modules/
-.vercel/
+.env.local
+.DS_Store
 *.log
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.cache
