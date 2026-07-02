@@ -121,6 +121,7 @@ export default function Chat() {
 
     try {
       const settings = getSettings()
+      console.log('[CHAT] Sending settings to API:', settings)
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

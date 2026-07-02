@@ -189,17 +189,17 @@ Assistant: "Para 200 mg/dL: (200 - ${settings.targetGlucose}) / ${settings.corre
       const errorData = await response.text()
       console.error('NVIDIA API Error:', response.status, errorData)
       console.warn('FALLING BACK: Using rule-based responses')
+      console.log('Settings received from client:', settings)
 
       // Fallback com respostas baseadas em regras (sem API)
       // ORDEM IMPORTANTE: perguntas de cálculo PRIMEIRO, ações DEPOIS
 
-      // Extrair valor de glicose de perguntas como "para 500" ou "500 mg/dL"
-      const questionGlucoseMatch = text.match(/para\s*(\d+)|(\d+)\s*(mg|de\s*glicose)/i)
-      const questionGlucoseValue = questionGlucoseMatch?.[1] || questionGlucoseMatch?.[2]
-        ? parseInt(questionGlucoseMatch[1] || questionGlucoseMatch[2]) : null
+      // Extrair valor de glicose de perguntas como "para 500", "500 mg/dL", "500 de glicose", "PRA 500 DE GLICOSE"
+      const questionGlucoseMatch = text.match(/(?:para|pra|a)\s*(\d+)|(?:^|\s)(\d+)\s*(?:mg|de\s*glicose)/i)
+      const questionGlucoseValue = questionGlucoseMatch?.[1] ? parseInt(questionGlucoseMatch[1]) : (questionGlucoseMatch?.[2] ? parseInt(questionGlucoseMatch[2]) : null)
+      console.log('Question glucose match:', questionGlucoseMatch, 'Value:', questionGlucoseValue)
 
       const fallbackResponse =
-        // 1. Perguntas de cálculo/dose (VERIFICAR PRIMEIRO)
         (text.includes('dose') || text.includes('calcular') || text.includes('quanto') || text.includes('quantas')) && questionGlucoseValue
         ? `Para ${questionGlucoseValue} mg/dL: (${questionGlucoseValue} - ${settings.targetGlucose}) / ${settings.correctionFactor} = ${Math.round((questionGlucoseValue - settings.targetGlucose) / settings.correctionFactor * 10) / 10}U de correção.`
         : (text.includes('dose') || text.includes('calcular') || text.includes('quanto') || text.includes('quantas'))
