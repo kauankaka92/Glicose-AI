@@ -39,9 +39,10 @@ export default function InsulinPage() {
         meal: result.meal,
         total: result.total,
       })
-      setCorrection(result.correction.toFixed(1))
-      setMeal(result.meal.toFixed(1))
-      setTotal(result.total.toFixed(1))
+      // Only auto-fill if fields are empty
+      if (!correction) setCorrection(result.correction.toFixed(1))
+      if (!meal) setMeal(result.meal.toFixed(1))
+      if (!total) setTotal(result.total.toFixed(1))
     } else {
       setSuggestion(null)
     }
