@@ -76,6 +76,7 @@ interface ClinicalEvent {
   type: 'glucose_event' | 'food_event' | 'insulin_context'
   value?: number
   items?: string[]
+  description?: string
   context?: string
   meal?: string
   order?: number
@@ -184,14 +185,18 @@ export default function Chat() {
         if (evt.items && evt.items.length > 0) {
           try {
             const totalCarbs = estimateCarbsFromItems(evt.items)
+            // Usar descrição COMPLETA se disponível, senão usar keywords
+            const description = (evt as any).description
+            const displayItems = description ? [description] : evt.items
+
             const saved = saveFood({
-              items: evt.items.map(name => ({ name, carbs: Math.round(totalCarbs / evt.items!.length) })),
+              items: displayItems.map(name => ({ name, carbs: Math.round(totalCarbs / displayItems.length) })),
               totalCarbs,
               mealType: mapMealType(evt.meal),
               timestamp: evt.timestamp || new Date().toISOString(),
               note: `Registrado via chat - evento #${evt.order}`
             })
-            console.log('[CHAT] Refeição do stream salva:', evt.meal, 'alimentos:', evt.items, 'ordem:', evt.order)
+            console.log('[CHAT] Refeição do stream salva:', evt.meal, 'itens:', displayItems, 'ordem:', evt.order)
           } catch (error) {
             console.error('[CHAT] Erro ao salvar alimento do stream:', error)
           }

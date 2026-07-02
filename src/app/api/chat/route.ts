@@ -22,6 +22,7 @@ interface ClinicalEvent {
   type: 'glucose_event' | 'food_event' | 'insulin_context'
   value?: number
   items?: string[]
+  description?: string
   context?: string
   meal?: string
   order: number
@@ -194,7 +195,7 @@ export async function POST(request: NextRequest) {
       { pattern: /(?:tomei|bebi)\s+(.+?)(?=\.|$)/gi, meal: 'general' },
     ]
 
-    const allFoods: { items: string[]; meal: string; carbs: number }[] = []
+    const allFoods: { items: string[]; meal: string; carbs: number; description: string }[] = []
 
     for (const { pattern, meal } of mealSegmentPatterns) {
       let match
@@ -206,18 +207,21 @@ export async function POST(request: NextRequest) {
         if (foodsInSegment.length > 0) {
           const uniqueFoods = [...new Set(foodsInSegment)]
           const carbs = estimateCarbs(uniqueFoods, segment)
-          allFoods.push({ items: uniqueFoods, meal, carbs })
-          console.log('[STREAM DE EVENTOS] Refeição detectada:', meal, 'alimentos:', uniqueFoods, 'carbs:', carbs)
+          // Salvar descrição COMPLETA da refeição (texto bruto)
+          const description = match[1].trim()
+          allFoods.push({ items: uniqueFoods, meal, carbs, description })
+          console.log('[STREAM DE EVENTOS] Refeição detectada:', meal, 'alimentos:', uniqueFoods, 'carbs:', carbs, 'descricao:', description)
         }
       }
     }
 
     // Criar eventos de alimento
-    for (const { items, meal, carbs } of allFoods) {
+    for (const { items, meal, carbs, description } of allFoods) {
       eventOrder++
       events.push({
         type: 'food_event',
         items,
+        description,
         meal,
         order: eventOrder,
         timestamp: new Date().toISOString()
@@ -250,6 +254,7 @@ export async function POST(request: NextRequest) {
     const glucoseValue = lastGlucose?.value || null
     const foods = firstFood?.items || []
     const carbsEstimate = firstFood ? (firstFood as any).carbs : undefined
+    const foodDescription = firstFood ? (firstFood as any).description : undefined
 
     // ============================================
     // 4. MONTAR EVENTO ESTRUTURADO COM STREAM
