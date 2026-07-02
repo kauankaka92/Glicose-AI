@@ -40,12 +40,17 @@ export async function POST(request: NextRequest) {
 
     // PRIMEIRO: Tentar detectar e registrar dados diretamente
     const text = messageText.toLowerCase()
+    console.log('Chat received:', messageText)
+    console.log('Text lowercase:', text)
+
     let directResponse: { response: string; actions: ChatAction[] } | null = null
 
     // Detectar glicose com valor numérico
-    const glucoseMatch = text.match(/glicose.*?(\d{2,3})|(\d{2,3}).*?(mg|glicose)|ao acordar.*?(\d{2,3})|(d{2,3}).*?ao acordar/i)
+    const glucoseMatch = text.match(/glicose.*?(\d{2,3})|(\d{2,3}).*?mg|ao acordar.*?(\d{2,3})|(\d{2,3}).*?ao acordar/i)
+    console.log('Glucose match:', glucoseMatch)
     const glucoseValue = glucoseMatch?.[1] || glucoseMatch?.[2] || glucoseMatch?.[3] || glucoseMatch?.[4] ?
       parseInt(glucoseMatch?.[1] || glucoseMatch?.[2] || glucoseMatch?.[3] || glucoseMatch?.[4]) : null
+    console.log('Glucose value:', glucoseValue)
 
     // Detectar contexto
     let context = 'other'
