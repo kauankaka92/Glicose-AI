@@ -181,6 +181,10 @@ Assistant: "Para 200 mg/dL: (200 - ${settings.targetGlucose}) / ${settings.corre
       }),
     })
 
+    console.log('NVIDIA API Response status:', response.status)
+    console.log('NVIDIA API Key present:', !!process.env.NVIDIA_NIM_API_KEY)
+    console.log('NVIDIA API Key starts with:', process.env.NVIDIA_NIM_API_KEY?.substring(0, 10) + '...')
+
     if (!response.ok) {
       const errorData = await response.text()
       console.error('NVIDIA API Error:', response.status, errorData)
