@@ -18,7 +18,7 @@ interface ChatAction {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { message, messages, userId = 'default' } = body
+    const { message, messages, userId = 'default', settings: clientSettings } = body
 
     const messageText = message || (messages?.length > 0 ? messages[messages.length - 1].content : null)
 
@@ -29,10 +29,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Obter configurações e dados atuais
-    const settings = getSettings()
+    // Usar settings do cliente (tem os dados atualizados do localStorage)
+    const settings = clientSettings || getSettings()
     console.log('=== CHAT API DEBUG ===')
-    console.log('Settings:', settings)
+    console.log('Settings (from client):', settings)
     console.log('Incoming message:', messageText)
 
     const glucoseEntries = getGlucoseEntries()

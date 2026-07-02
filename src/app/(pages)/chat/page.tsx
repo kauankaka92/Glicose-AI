@@ -11,7 +11,7 @@ import {
   setCurrentConversationId,
   ChatConversation,
 } from '@/lib/chat-storage'
-import { saveGlucose, saveInsulin, saveFood } from '@/lib/storage'
+import { saveGlucose, saveInsulin, saveFood, getSettings } from '@/lib/storage'
 
 interface Message {
   id: string
@@ -120,13 +120,15 @@ export default function Chat() {
     }
 
     try {
+      const settings = getSettings()
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: userInput,
           messages: messages.map(m => ({ role: m.role, content: m.content })),
-          userId: currentConversationId || 'default'
+          userId: currentConversationId || 'default',
+          settings,
         }),
       })
 
