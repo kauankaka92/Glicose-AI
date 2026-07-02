@@ -32,7 +32,9 @@ export async function POST(request: NextRequest) {
     // Usar settings do cliente (tem os dados atualizados do localStorage)
     const settings = clientSettings || getSettings()
     console.log('=== CHAT API DEBUG ===')
-    console.log('Settings (from client):', settings)
+    console.log('Settings from client:', clientSettings)
+    console.log('Settings used:', settings)
+    console.log('correctionFactor:', settings.correctionFactor)
     console.log('Incoming message:', messageText)
 
     const glucoseEntries = getGlucoseEntries()
@@ -50,11 +52,11 @@ export async function POST(request: NextRequest) {
 
     let directResponse: { response: string; actions: ChatAction[] } | null = null
 
-    // Detectar glicose com valor numérico
-    const glucoseMatch = text.match(/glicose.*?(\d{2,3})|(\d{2,3}).*?mg|ao acordar.*?(\d{2,3})|(\d{2,3}).*?ao acordar/i)
+    // Detectar glicose com valor numérico (mais flexível)
+    const glucoseMatch = text.match(/glicose.*?(\d{2,3})|(\d{2,3}).*?mg|(\d{2,3}).*?(ao acordar|jejum|antes|depois|após|dormir|cama|madrugada)|estava.*?(\d{2,3})|(\d{2,3}).*?estava/i)
     console.log('Glucose match result:', glucoseMatch)
-    const glucoseValue = glucoseMatch?.[1] || glucoseMatch?.[2] || glucoseMatch?.[3] || glucoseMatch?.[4] ?
-      parseInt(glucoseMatch?.[1] || glucoseMatch?.[2] || glucoseMatch?.[3] || glucoseMatch?.[4]) : null
+    const glucoseValue = glucoseMatch?.[1] || glucoseMatch?.[2] || glucoseMatch?.[3] || glucoseMatch?.[4] || glucoseMatch?.[5] || glucoseMatch?.[6] ?
+      parseInt(glucoseMatch?.[1] || glucoseMatch?.[2] || glucoseMatch?.[3] || glucoseMatch?.[4] || glucoseMatch?.[5] || glucoseMatch?.[6]) : null
     console.log('Glucose value parsed:', glucoseValue)
 
     // Detectar contexto
@@ -190,6 +192,7 @@ Assistant: "Para 200 mg/dL: (200 - ${settings.targetGlucose}) / ${settings.corre
       console.error('NVIDIA API Error:', response.status, errorData)
       console.warn('FALLING BACK: Using rule-based responses')
       console.log('Settings received from client:', settings)
+      console.log('correctionFactor being used:', settings.correctionFactor)
 
       // Fallback com respostas baseadas em regras (sem API)
       // ORDEM IMPORTANTE: perguntas de cálculo PRIMEIRO, ações DEPOIS
@@ -198,6 +201,7 @@ Assistant: "Para 200 mg/dL: (200 - ${settings.targetGlucose}) / ${settings.corre
       const questionGlucoseMatch = text.match(/(?:para|pra|a)\s*(\d+)|(?:^|\s)(\d+)\s*(?:mg|de\s*glicose)/i)
       const questionGlucoseValue = questionGlucoseMatch?.[1] ? parseInt(questionGlucoseMatch[1]) : (questionGlucoseMatch?.[2] ? parseInt(questionGlucoseMatch[2]) : null)
       console.log('Question glucose match:', questionGlucoseMatch, 'Value:', questionGlucoseValue)
+      console.log('Will calculate with correctionFactor:', settings.correctionFactor)
 
       const fallbackResponse =
         (text.includes('dose') || text.includes('calcular') || text.includes('quanto') || text.includes('quantas')) && questionGlucoseValue
