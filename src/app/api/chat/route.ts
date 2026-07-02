@@ -351,21 +351,21 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================
-    // 5. CALCULAR INSULINA (APENAS SE EXPLICITAMENTE SOLICITADO)
+    // 5. CALCULAR INSULINA (SEMPRE QUE HAVER GLICOSE > 150)
     // ============================================
-    // Só calcular se usuário usou palavras como "preciso", "quanto", "dose", "sugira"
-    const insulinRequestPatterns = [
-      /preciso\s+(?:de\s+)?(?:insulina|correcao|correção)/i,
-      /quanto\s+(?:de\s+)?(?:insulina|correcao|correção)/i,
-      /sugira\s+(?:a\s+)?(?:dose|insulina)/i,
-      /qual\s+(?:a\s+)?(?:dose|insulina)/i,
-      /me\s+(?:diga|sugira|recomende)\s+(?:a\s+)?(?:dose|insulina|correcao|correção)/i,
-      /devo\s+(?:tomar|aplicar)\s+quantas\s+(?:unidades|u)/i,
+    // Calcular automaticamente quando glicose > 150 mg/dL
+    // Usuário pode dizer "não quero correção" para ignorar
+    const insulinBlockPatterns = [
+      /não\s+quero\s+(?:correcao|correção|insulina)/i,
+      /nao\s+quero\s+(?:correcao|correção|insulina)/i,
+      /sem\s+(?:correcao|correção|insulina)/i,
+      /não\s+preciso\s+de\s+(?:insulina|correcao|correção)/i,
     ]
 
-    const isInsulinRequested = insulinRequestPatterns.some(p => p.test(message))
+    const isInsulinBlocked = insulinBlockPatterns.some(p => p.test(message))
 
-    if (glucoseValue && isInsulinRequested) {
+    // Apenas calcular se glicose > 150 e usuário não bloqueou
+    if (glucoseValue && glucoseValue > 150 && !isInsulinBlocked) {
       const correction = calculateInsulinCorrection(glucoseValue, settings.targetGlucose, settings.correctionFactor)
 
       let mealInsulin = 0
@@ -375,7 +375,7 @@ export async function POST(request: NextRequest) {
 
       const total = correction + mealInsulin
 
-      // Apenas registrar se total >= 1.5U (arredonda para 2U) ou >= 2U
+      // Apenas registrar se total >= 1.5U (arredonda para 2U)
       if (total >= 1.5) {
         const roundedTotal = Math.round(total) // 1.5 → 2, 2.3 → 2, 2.7 → 3
         event.insulin = {
@@ -384,12 +384,16 @@ export async function POST(request: NextRequest) {
           total: roundedTotal
         }
         event.actions.push('calculate_dose')
-        console.log('[MOTOR DE DADOS] Insulina calculada (solicitada):', roundedTotal, 'U (total:', total, ')')
+        console.log('[MOTOR DE DADOS] Insulina calculada:', roundedTotal, 'U (total:', total, ')')
       } else {
         console.log('[MOTOR DE DADOS] Insulina NÃO registrada - total', total, 'U < 1.5U')
       }
-    } else if (glucoseValue && !isInsulinRequested) {
-      console.log('[MOTOR DE DADOS] Insulina NÃO calculada - usuário não solicitou')
+    } else if (isInsulinBlocked) {
+      console.log('[MOTOR DE DADOS] Insulina bloqueada pelo usuário')
+    } else if (glucoseValue && glucoseValue <= 150) {
+      console.log('[MOTOR DE DADOS] Insulina NÃO calculada - glicose', glucoseValue, '<= 150')
+    } else if (!glucoseValue) {
+      console.log('[MOTOR DE DADOS] Insulina NÃO calculada - sem glicose')
     }
 
     // Se usuário mencionou insulina explícita (ex: "tomei 5 unidades")
