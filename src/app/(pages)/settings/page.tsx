@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, Button, Alert, Toggle, Divider, Container } from '@/components/UI'
+import { Card, Button, Alert, Container } from '@/components/UI'
 import { getSettings, saveSettings, exportData, importData, clearAllData } from '@/lib/storage'
 import { UserSettings } from '@/lib/types'
 
@@ -26,18 +26,14 @@ export default function SettingsPage() {
 
   const handleChange = (key: keyof UserSettings, value: string) => {
     const numValue = parseFloat(value.replace(',', '.'))
-    console.log(`Mudando ${key} para ${numValue}`)
-    if (!isNaN(numValue) && numValue > 0) {
+    if (!isNaN(numValue) && numValue > 0 && numValue < 10000) {
       setSaved(false)
       setSettings((prev) => {
         const newSettings = { ...prev, [key]: numValue }
-        console.log('Novo settings:', newSettings)
-        // Auto-save após 800ms sem mudanças
         setTimeout(() => {
           saveSettings(newSettings)
           setSaved(true)
-          console.log('Settings auto-saved:', newSettings)
-        }, 800)
+        }, 500)
         return newSettings
       })
     }
