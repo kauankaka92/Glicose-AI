@@ -14,6 +14,12 @@ const DEFAULT_SETTINGS: UserSettings = {
   activeInsulinTime: 4,
 }
 
+// SSR guard - localStorage não existe no servidor
+function getLocalStorage(): Storage | null {
+  if (typeof window === 'undefined') return null
+  return window.localStorage
+}
+
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
 }
@@ -25,12 +31,15 @@ export function saveGlucose(entry: Omit<GlucoseEntry, 'id'>): GlucoseEntry {
   }
   const entries = getGlucoseEntries()
   entries.push(newEntry)
-  localStorage.setItem(STORAGE_KEYS.GLUCOSE, JSON.stringify(entries))
+  const storage = getLocalStorage()
+  if (storage) storage.setItem(STORAGE_KEYS.GLUCOSE, JSON.stringify(entries))
   return newEntry
 }
 
 export function getGlucoseEntries(): GlucoseEntry[] {
-  const data = localStorage.getItem(STORAGE_KEYS.GLUCOSE)
+  const storage = getLocalStorage()
+  if (!storage) return []
+  const data = storage.getItem(STORAGE_KEYS.GLUCOSE)
   if (!data) return []
   try {
     return JSON.parse(data)
@@ -43,7 +52,8 @@ export function deleteGlucoseEntry(id: string): boolean {
   const entries = getGlucoseEntries()
   const filtered = entries.filter((e) => e.id !== id)
   if (filtered.length === entries.length) return false
-  localStorage.setItem(STORAGE_KEYS.GLUCOSE, JSON.stringify(filtered))
+  const storage = getLocalStorage()
+  if (storage) storage.setItem(STORAGE_KEYS.GLUCOSE, JSON.stringify(filtered))
   return true
 }
 
@@ -54,12 +64,15 @@ export function saveFood(entry: Omit<FoodEntry, 'id'>): FoodEntry {
   }
   const entries = getFoodEntries()
   entries.push(newEntry)
-  localStorage.setItem(STORAGE_KEYS.FOOD, JSON.stringify(entries))
+  const storage = getLocalStorage()
+  if (storage) storage.setItem(STORAGE_KEYS.FOOD, JSON.stringify(entries))
   return newEntry
 }
 
 export function getFoodEntries(): FoodEntry[] {
-  const data = localStorage.getItem(STORAGE_KEYS.FOOD)
+  const storage = getLocalStorage()
+  if (!storage) return []
+  const data = storage.getItem(STORAGE_KEYS.FOOD)
   if (!data) return []
   try {
     return JSON.parse(data)
@@ -72,7 +85,8 @@ export function deleteFoodEntry(id: string): boolean {
   const entries = getFoodEntries()
   const filtered = entries.filter((e) => e.id !== id)
   if (filtered.length === entries.length) return false
-  localStorage.setItem(STORAGE_KEYS.FOOD, JSON.stringify(filtered))
+  const storage = getLocalStorage()
+  if (storage) storage.setItem(STORAGE_KEYS.FOOD, JSON.stringify(filtered))
   return true
 }
 
@@ -83,12 +97,15 @@ export function saveInsulin(entry: Omit<InsulinEntry, 'id'>): InsulinEntry {
   }
   const entries = getInsulinEntries()
   entries.push(newEntry)
-  localStorage.setItem(STORAGE_KEYS.INSULIN, JSON.stringify(entries))
+  const storage = getLocalStorage()
+  if (storage) storage.setItem(STORAGE_KEYS.INSULIN, JSON.stringify(entries))
   return newEntry
 }
 
 export function getInsulinEntries(): InsulinEntry[] {
-  const data = localStorage.getItem(STORAGE_KEYS.INSULIN)
+  const storage = getLocalStorage()
+  if (!storage) return []
+  const data = storage.getItem(STORAGE_KEYS.INSULIN)
   if (!data) return []
   try {
     return JSON.parse(data)
@@ -101,12 +118,15 @@ export function deleteInsulinEntry(id: string): boolean {
   const entries = getInsulinEntries()
   const filtered = entries.filter((e) => e.id !== id)
   if (filtered.length === entries.length) return false
-  localStorage.setItem(STORAGE_KEYS.INSULIN, JSON.stringify(filtered))
+  const storage = getLocalStorage()
+  if (storage) storage.setItem(STORAGE_KEYS.INSULIN, JSON.stringify(filtered))
   return true
 }
 
 export function getSettings(): UserSettings {
-  const data = localStorage.getItem(STORAGE_KEYS.SETTINGS)
+  const storage = getLocalStorage()
+  if (!storage) return DEFAULT_SETTINGS
+  const data = storage.getItem(STORAGE_KEYS.SETTINGS)
   if (!data) return DEFAULT_SETTINGS
   try {
     return { ...DEFAULT_SETTINGS, ...JSON.parse(data) }
@@ -118,12 +138,15 @@ export function getSettings(): UserSettings {
 export function saveSettings(settings: Partial<UserSettings>): UserSettings {
   const current = getSettings()
   const updated = { ...current, ...settings }
-  localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated))
+  const storage = getLocalStorage()
+  if (storage) storage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated))
   return updated
 }
 
 export function clearAllData(): void {
-  Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key))
+  const storage = getLocalStorage()
+  if (!storage) return
+  Object.values(STORAGE_KEYS).forEach((key) => storage.removeItem(key))
 }
 
 export function exportData(): string {
