@@ -36,6 +36,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { message, settings: clientSettings } = body
 
+    console.log('[MOTOR DE DADOS] Mensagem recebida:', message)
+
     if (!message || typeof message !== 'string') {
       return NextResponse.json(
         { success: false, error: 'Message is required' },
@@ -64,6 +66,7 @@ export async function POST(request: NextRequest) {
       const match = message.match(pattern)
       if (match) {
         glucoseValue = parseInt(match[1], 10)
+        console.log('[MOTOR DE DADOS] Glicose detectada:', glucoseValue, 'pattern:', pattern.toString())
         if (glucoseValue >= 20 && glucoseValue <= 600) break
       }
     }
@@ -233,6 +236,9 @@ export async function POST(request: NextRequest) {
     if (!response) {
       response = '✔ Mensagem recebida. Como posso ajudar?'
     }
+
+    console.log('[MOTOR DE DADOS] Resposta:', response)
+    console.log('[MOTOR DE DADOS] actions array:', event.actions, 'length:', event.actions.length)
 
     // ============================================
     // 9. RETORNAR EVENTO + RESPOSTA
