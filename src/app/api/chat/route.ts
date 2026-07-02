@@ -214,16 +214,17 @@ export async function POST(request: NextRequest) {
     ]
 
     // Segmentar texto por marcadores de refeição - CAPTURAR APENAS ITENS
+    // O texto pode ter formato: "No café da manhã eu consumi:\n\n2 pães..."
+    // Ou: "No almoço eu consumi:\n\n3 pedaços de frango..."
     const mealSegmentPatterns = [
-      // Café da manhã: captura até próximo marcador (funciona com "No café", "café", etc)
-      // Usa [\s\S] para capturar através de newlines
-      { pattern: /(?:no\s+)?(?:cafe|café|café da manhã|cafe da manha)\s*[:\-\n]?\s*([\s\S]+?)(?=\bno\s+almoço|\bno\s+almoco|\bantes\s+do\s+almoço|\bapos\s+o\s+almoço|\bdepois\s+do\s+almoço|\balmoco|almoço|janta|jantar|$)/gi, meal: 'breakfast' },
-      // Almoço: captura até "depois do almoço" ou jantar
-      { pattern: /(?:no\s+)?(?:almoco|almoço)\s*[:\-\n]?\s*([\s\S]+?)(?=\bdepois\s+do\s+almoço|\bapos\s+o\s+almoço|\bno\s+jantar|\bjanta|\bcafe|café|$)/gi, meal: 'lunch' },
+      // Café da manhã: captura ТОДОС o texto após "café" até próximo marcador
+      { pattern: /(?:no\s+)?(?:cafe|café|café da manhã|cafe da manha)\s+(?:eu\s+)?(?:consumi|comi)\s*:?[\s\n]*([\s\S]+?)(?=\bno\s+almoço|\bno\s+almoco|\bantes\s+do\s+almoço|\bapos\s+o\s+almoço|\bdepois\s+do\s+almoço|\balmoco|almoço|janta|jantar|$)/gi, meal: 'breakfast' },
+      // Almoço: captura ТОДОС o texto após "almoço" até "depois do almoço"
+      { pattern: /(?:no\s+)?(?:almoco|almoço)\s+(?:eu\s+)?(?:consumi|comi)\s*:?[\s\n]*([\s\S]+?)(?=\bdepois\s+do\s+almoço|\bapos\s+o\s+almoço|\bno\s+jantar|\bjanta|$)/gi, meal: 'lunch' },
       // Lanche pós-almoço: com "comi" ou "consumi"
-      { pattern: /(?:depois\s+do\s+almoço|apos\s+o\s+almoço)\s+(?:eu\s+)?(?:comi|consumi)\s*[:\-\n]?\s*([\s\S]+?)(?=\bno\s+jantar|\bjanta|\bcafe|café|\balmoco|almoço|$)/gi, meal: 'snack' },
+      { pattern: /(?:depois\s+do\s+almoço|apos\s+o\s+almoço)\s+(?:eu\s+)?(?:comi|consumi)\s*:?[\s\n]*([\s\S]+?)(?=\bno\s+jantar|\bjanta|$)/gi, meal: 'snack' },
       // Jantar: captura até fim
-      { pattern: /(?:janta|jantar)\s*[:\-\n]?\s*([\s\S]+?)(?=\bcafe|café|\balmoco|almoço|$)/gi, meal: 'dinner' },
+      { pattern: /(?:janta|jantar)\s+(?:eu\s+)?(?:consumi|comi)\s*:?[\s\n]*([\s\S]+?)(?=$)/gi, meal: 'dinner' },
     ]
 
     const allFoods: { items: string[]; meal: string; carbs: number; description: string }[] = []
