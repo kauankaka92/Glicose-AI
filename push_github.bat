@@ -20,8 +20,8 @@ echo.
 
 echo [2/6] Configurando remote origin...
 git remote remove origin 2>nul
-git remote add origin https://github.com/pcdosilva01-spec/Glicose-AI.git
-echo       OK: https://github.com/pcdosilva01-spec/Glicose-AI.git
+git remote add origin https://github.com/kauankaka92/Glicose-AI.git
+echo       OK: https://github.com/kauankaka92/Glicose-AI.git
 echo.
 
 echo [3/6] Limpando indice Git...
@@ -48,7 +48,7 @@ echo.
 if %errorlevel% == 0 (
     echo ================================================
     echo   Push realizado com sucesso!
-    echo   https://github.com/pcdosilva01-spec/Glicose-AI
+    echo   https://github.com/kauankaka92/Glicose-AI
     echo ================================================
 ) else (
     echo ================================================
