@@ -82,14 +82,47 @@ Exemplo: "Sua dose seria de 2.5 unidades. [AÇÃO: save_insulin|{"correction": 2
     const model = process.env.NVIDIA_NIM_MODEL || 'meta/llama-3.1-8b-instruct'
 
     if (!apiKey) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'NVIDIA_NIM_API_KEY not configured',
-          fallback: true
+      console.warn('NVIDIA_NIM_API_KEY not configured, using fallback NLP')
+
+      // Fallback: NLP local baseado em patterns
+      const lastMessage = lastUserMessage?.content || ''
+      const text = lastMessage.toLowerCase()
+
+      let response = 'Não consegui conectar ao servidor de IA. Verifique a API Key nas configurações do Vercel.'
+      const actions: ChatAction[] = []
+
+      // Detectar glicose
+      const glucoseMatch = text.match(/(\d{2,3})\s*(mg|glicose)/)
+      if (glucoseMatch) {
+        const value = parseInt(glucoseMatch[1])
+        response = `Glicose detectada: ${value} mg/dL. Para calcular insulina, preciso do seu fator de correção.`
+        actions.push({ type: 'save_glucose', data: { value }, confirmed: false })
+      }
+
+      // Detectar pergunta sobre insulina
+      if (text.includes('insulina') || text.includes('unidade')) {
+        const glucoseMatch2 = text.match(/(\d{2,3})/)
+        if (glucoseMatch2) {
+          const glucose = parseInt(glucoseMatch2[1])
+          const correction = Math.round((glucose - settings.targetGlucose) / settings.correctionFactor * 10) / 10
+          if (correction > 0) {
+            response = `Para glicose de ${glucose} mg/dL: ${correction}U de correção.`
+            actions.push({ type: 'save_insulin', data: { correction, glucoseValue: glucose }, confirmed: false })
+          } else {
+            response = 'Sua glicose está no alvo. Não precisa de correção.'
+          }
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          response,
+          actions,
+          timestamp: new Date().toISOString(),
+          fallback: true,
         },
-        { status: 500 }
-      )
+      })
     }
 
     const response = await fetch(NVIDIA_NIM_API_URL, {
