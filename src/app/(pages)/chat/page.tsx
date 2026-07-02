@@ -74,10 +74,11 @@ interface ChatEvent {
 }
 
 interface ClinicalEvent {
-  type: 'glucose_event' | 'food_event' | 'insulin_context'
+  type: 'glucose_event' | 'food_event' | 'insulin_event' | 'insulin_context'
   value?: number
   items?: string[]
   description?: string
+  dose?: number
   context?: string
   meal?: string
   order?: number
