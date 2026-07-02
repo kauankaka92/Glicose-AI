@@ -13,6 +13,37 @@ import {
 } from '@/lib/chat-storage'
 import { saveGlucose, saveFood, saveInsulin } from '@/lib/storage'
 
+// ============================================
+// FUNÇÕES AUXILIARES PARA STREAM
+// ============================================
+
+function estimateCarbsFromItems(items: string[]): number {
+  const carbsMap: Record<string, number> = {
+    'arroz': 28, 'feijão': 14, 'feijao': 14, 'carne': 0, 'frango': 0, 'peixe': 0,
+    'ovo': 0.6, 'ovos': 1.2, 'pão': 30, 'pao': 30, 'paozinho': 15, 'manteiga': 0.1,
+    'café': 0, 'cafe': 0, 'leite': 12, 'açucar': 12, 'acucar': 12, 'suco': 22,
+    'banana': 23, 'maçã': 21, 'maca': 21, 'laranja': 21, 'batata': 17,
+    'macarrão': 30, 'macarrao': 30, 'salada': 5, 'verdura': 5, 'legume': 10,
+    'pizza': 33, 'hamburguer': 30, 'hambúrguer': 30, 'feijoada': 25, 'churrasco': 0,
+  }
+  const total = items.reduce((sum, item) => {
+    const normalized = item.toLowerCase().trim()
+    return sum + (carbsMap[normalized] || 15)
+  }, 0)
+  return Math.round(total)
+}
+
+function mapMealType(meal?: string): any {
+  if (!meal) return undefined
+  const map: Record<string, any> = {
+    'breakfast': 'breakfast',
+    'lunch': 'lunch',
+    'dinner': 'dinner',
+    'general': undefined
+  }
+  return map[meal] || undefined
+}
+
 interface Message {
   id: string
   role: 'user' | 'assistant'
@@ -35,6 +66,20 @@ interface ChatEvent {
     total: number
   }
   ui_update: boolean
+  stream?: {
+    events: ClinicalEvent[]
+    summary: string
+  }
+}
+
+interface ClinicalEvent {
+  type: 'glucose_event' | 'food_event' | 'insulin_context'
+  value?: number
+  items?: string[]
+  context?: string
+  meal?: string
+  order?: number
+  timestamp?: string
 }
 
 export default function Chat() {
@@ -109,6 +154,76 @@ export default function Chat() {
       }
     }
 
+    // ============================================
+    // AÇÃO: processar STREAM DE EVENTOS (prioritário)
+    // ============================================
+    if (event.stream && event.stream.events.length > 0) {
+      console.log('[CHAT] Processando stream de eventos:', event.stream.events.length, 'eventos')
+
+      // Salvar TODAS as glicoses do stream
+      const glucoseEvents = event.stream.events.filter(e => e.type === 'glucose_event')
+      for (const evt of glucoseEvents) {
+        if (evt.value) {
+          try {
+            const saved = saveGlucose({
+              value: evt.value,
+              context: evt.context as any,
+              timestamp: evt.timestamp || new Date().toISOString(),
+              note: `Registrado via chat - evento #${evt.order}`
+            })
+            console.log('[CHAT] Glicose do stream salva:', evt.value, 'contexto:', evt.context, 'ordem:', evt.order)
+          } catch (error) {
+            console.error('[CHAT] Erro ao salvar glicose do stream:', error)
+          }
+        }
+      }
+
+      // Salvar TODOS os alimentos do stream
+      const foodEvents = event.stream.events.filter(e => e.type === 'food_event')
+      for (const evt of foodEvents) {
+        if (evt.items && evt.items.length > 0) {
+          try {
+            const totalCarbs = estimateCarbsFromItems(evt.items)
+            const saved = saveFood({
+              items: evt.items.map(name => ({ name, carbs: Math.round(totalCarbs / evt.items!.length) })),
+              totalCarbs,
+              mealType: mapMealType(evt.meal),
+              timestamp: evt.timestamp || new Date().toISOString(),
+              note: `Registrado via chat - evento #${evt.order}`
+            })
+            console.log('[CHAT] Refeição do stream salva:', evt.meal, 'alimentos:', evt.items, 'ordem:', evt.order)
+          } catch (error) {
+            console.error('[CHAT] Erro ao salvar alimento do stream:', error)
+          }
+        }
+      }
+
+      // Se tem stream, já processou tudo
+      if (event.insulin && event.insulin.total > 0) {
+        try {
+          const lastGlucose = glucoseEvents[glucoseEvents.length - 1]
+          const saved = saveInsulin({
+            correction: event.insulin.correction,
+            meal: event.insulin.meal,
+            total: event.insulin.total,
+            glucoseValue: lastGlucose?.value,
+            timestamp: new Date().toISOString()
+          })
+          console.log('[CHAT] Insulina salva no localStorage:', saved)
+        } catch (error) {
+          console.error('[CHAT] Erro ao salvar insulina:', error)
+        }
+      }
+
+      if (event.ui_update) {
+        notifyDataChange()
+      }
+      return // Sai early, stream já foi processado
+    }
+
+    // ============================================
+    // FALLBACK: processar evento legado (sem stream)
+    // ============================================
     // Ação: save_glucose - SALVAR DIRETAMENTE NO LOCALSTORAGE DO CLIENTE
     if (event.actions.includes('save_glucose') && event.data.glucose) {
       try {
