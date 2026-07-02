@@ -19,10 +19,12 @@ import { GLUCOSE_STATUS, getGlucoseStatus, getGlucoseStatusLabel } from '@/lib/t
  * Cada input do usuário pode gerar múltiplos eventos independentes
  */
 interface ClinicalEvent {
-  type: 'glucose_event' | 'food_event' | 'insulin_context'
+  type: 'glucose_event' | 'food_event' | 'insulin_event' | 'insulin_context'
   value?: number
   items?: string[]
   description?: string
+  insulin?: number
+  dose?: number
   context?: string
   meal?: string
   order: number
@@ -227,7 +229,7 @@ export async function POST(request: NextRequest) {
       { pattern: /(?:janta|jantar)\s+(?:eu\s+)?(?:consumi|comi)\s*:?[\s\n]*([\s\S]+?)(?=$)/gi, meal: 'dinner' },
     ]
 
-    const allFoods: { items: string[]; meal: string; carbs: number; description: string }[] = []
+    const allFoods: { items: string[]; meal: string; carbs: number; description: string; insulin?: number }[] = []
 
     console.log('[STREAM DE EVENTOS] Iniciando extração de alimentos...')
     console.log('[STREAM DE EVENTOS] Mensagem:', message.substring(0, 300))
@@ -239,6 +241,14 @@ export async function POST(request: NextRequest) {
 
         console.log('[STREAM DE EVENTOS] Match encontrado:', meal, 'segment bruto:', segment)
 
+        // Extrair insulina do segmento (padrão: "(8 unidades de insulina)")
+        const segmentInsulinMatch = segment.match(/\((\d+(?:\.\d+)?)\s*(?:unidades|u|ui)\s*(?:de\s*)?(?:insulina|correcao|correção)?\)/i)
+        const segmentInsulin = segmentInsulinMatch ? parseFloat(segmentInsulinMatch[1]) : undefined
+
+        if (segmentInsulin) {
+          console.log('[STREAM DE EVENTOS] Insulina detectada no segmento:', segmentInsulin, 'U')
+        }
+
         // Limpar segmento: remover prefixos
         segment = segment.replace(/^(?:da\s+manhã|da\s+manha|da\s+tarde|da\s+noite|do\s+almoço|do\s+café|do\s+cafe)\s+/i, '')
         segment = segment.replace(/^(?:eu\s+)?(comi|consumi)\s*[:\-]?\s*/i, '')
@@ -248,6 +258,8 @@ export async function POST(request: NextRequest) {
 
         // Limpar segmento: remover texto após palavras de contexto indesejado
         segment = segment.replace(/\s*(?:no\s+total|antes\s+de|depois\s+de|quero\s+que|como\s+está|minha\s+evolução|se\s+preciso|sobre\s+correcao|sobre\s+correção).*$/i, '')
+        // Remover insulina entre parênteses do segmento de descrição
+        segment = segment.replace(/\s*\(\d+(?:\.\d+)?\s*(?:unidades|u|ui)\s*(?:de\s*)?(?:insulina|correcao|correção)?\)/g, '')
         segment = segment.replace(/^-+\s*/g, '') // remover bullets no início
         segment = segment.replace(/\n+/g, ' ') // substituir newlines por espaço
         segment = segment.replace(/\s+/g, ' ') // normalizar espaços
@@ -271,30 +283,56 @@ export async function POST(request: NextRequest) {
           const carbs = estimateCarbs(uniqueFoods, segment)
           // Salvar descrição COMPLETA da refeição (texto bruto limpo)
           const description = segment
-          allFoods.push({ items: uniqueFoods, meal, carbs, description })
-          console.log('[STREAM DE EVENTOS] Refeição detectada:', meal, 'alimentos:', uniqueFoods, 'carbs:', carbs, 'descricao:', description)
+          allFoods.push({ items: uniqueFoods, meal, carbs, description, insulin: segmentInsulin })
+          console.log('[STREAM DE EVENTOS] Refeição detectada:', meal, 'alimentos:', uniqueFoods, 'carbs:', carbs, 'insulina:', segmentInsulin, 'descricao:', description)
         } else {
           console.log('[STREAM DE EVENTOS] Refeição SEM alimentos detectados:', meal, 'segment:', segment)
         }
       }
     }
 
-    // Criar eventos de alimento
-    for (const { items, meal, carbs, description } of allFoods) {
+    // Criar eventos de alimento (e insulina associada se existir)
+    for (const { items, meal, carbs, description, insulin } of allFoods) {
       eventOrder++
       events.push({
         type: 'food_event',
         items,
         description,
         meal,
+        insulin,
         order: eventOrder,
         timestamp: new Date().toISOString()
       })
+
+      // Se tem insulina associada, cria evento separado de insulina
+      if (insulin && insulin > 0) {
+        eventOrder++
+        events.push({
+          type: 'insulin_event',
+          dose: insulin,
+          meal,
+          order: eventOrder,
+          timestamp: new Date().toISOString()
+        })
+        console.log('[STREAM DE EVENTOS] Evento de insulina criado:', insulin, 'U para', meal)
+      }
     }
 
     // ============================================
-    // 3. EXTRATOR DE INSULINA EXPLÍCITA
+    // 3. EXTRATOR DE INSULINA EXPLÍCITA DOS ALIMENTOS
     // ============================================
+    // Formato: "2 copos de café (8 unidades de insulina)" ou "(8 unidades de insulina)"
+    const insulinInFoodPattern = /\((\d+(?:\.\d+)?)\s*(?:unidades|u|ui)\s*(?:de\s*)?(?:insulina|correcao|correção)?\)/gi
+    const explicitInsulins: { dose: number; context: string }[] = []
+
+    let matchInsulin
+    while ((matchInsulin = insulinInFoodPattern.exec(message)) !== null) {
+      const dose = parseFloat(matchInsulin[1])
+      console.log('[MOTOR DE DADOS] Insulina no texto detectada:', dose, 'U')
+      explicitInsulins.push({ dose, context: 'meal' })
+    }
+
+    // Também buscar padrões soltos de insulina
     let explicitInsulin: number | null = null
     const insulinPatterns = [
       /tomei\s*(\d+(?:\.\d+)?)\s*(?:unidades|u|ui)/i,
@@ -302,8 +340,6 @@ export async function POST(request: NextRequest) {
       /(\d+(?:\.\d+)?)\s*(?:unidades|u|ui)\s+(?:para\s+)?(?:esse|essa|o|a|correcao|correção|pos|apos|antes|pre)/i,
       /(\d+(?:\.\d+)?)\s*(?:unidades|u|ui)\s*(?:de\s*)?(?:insulina|correção|correao)/i,
       /insulina\s*(\d+(?:\.\d+)?)\s*(?:unidades|u)?/i,
-      // Padrão: "para esse lanche, 3 unidades" ou "para pos almoco: 3 unidades"
-      /(?:para\s+)?(?:esse|essa|o|a|pos|apos|antes|pre)\s+(?:almoco|almoço|lanche|cafe|café|janta|jantar)\s*[,:]?\s*(\d+(?:\.\d+)?)\s*(?:unidades|u|ui)/i,
     ]
 
     console.log('[MOTOR DE DADOS] Buscando insulina explícita na mensagem:', message.substring(0, 200))
@@ -312,7 +348,6 @@ export async function POST(request: NextRequest) {
       const match = message.match(pattern)
       console.log('[MOTOR DE DADOS] Testando pattern:', pattern.toString(), 'match:', match)
       if (match) {
-        // Pega o primeiro grupo de captura (pode ser match[1] ou match[2] dependendo do padrão)
         const captured = match[1] || match[2]
         explicitInsulin = parseFloat(captured)
         console.log('[MOTOR DE DADOS] Insulina explícita detectada:', explicitInsulin, 'pattern:', pattern.toString())
@@ -320,7 +355,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('[MOTOR DE DADOS] Insulina explícita final:', explicitInsulin)
+    console.log('[MOTOR DE DADOS] Insulinas encontradas:', explicitInsulins.length, 'explícita:', explicitInsulin)
 
     // Dados consolidados para calculo (ultima glicose detectada)
     const lastGlucose = events.filter(e => e.type === 'glucose_event').pop()
@@ -463,8 +498,34 @@ export async function POST(request: NextRequest) {
       console.log('[MOTOR DE DADOS] NENHUM alimento salvo')
     }
 
+    // Salvar TODAS as insulinas do stream (eventos insulin_event)
+    const insulinEventsToSave = events.filter(e => e.type === 'insulin_event')
+    console.log('[MOTOR DE DADOS] Insulin events para salvar:', insulinEventsToSave.length)
+
+    const savedInsulins: any[] = []
+    for (const evt of insulinEventsToSave) {
+      const insulinEvent = evt as ClinicalEvent & { dose: number, meal: string }
+      console.log('[MOTOR DE DADOS] Salvando insulin_event:', insulinEvent.dose, 'U para', insulinEvent.meal)
+
+      // Buscar glicose mais próxima antes deste evento de insulina
+      const insulinIndex = events.findIndex(e => e === evt)
+      const glucoseBefore = events.filter((e, i) =>
+        e.type === 'glucose_event' && i < insulinIndex
+      ).pop()
+
+      const saved = saveInsulin({
+        correction: insulinEvent.dose,
+        meal: 0,
+        total: insulinEvent.dose,
+        timestamp: evt.timestamp || new Date().toISOString(),
+        glucoseValue: glucoseBefore?.value,
+        note: `Insulina para ${insulinEvent.meal}`
+      })
+      savedInsulins.push({ type: 'insulin', ...saved })
+    }
+
     if (event.insulin && event.insulin.total > 0) {
-      console.log('[MOTOR DE DADOS] Salvando insulina:', event.insulin.total, 'U')
+      console.log('[MOTOR DE DADOS] Salvando insulina calculada:', event.insulin.total, 'U')
       savedData.insulin = saveInsulin({
         correction: event.insulin.correction,
         meal: event.insulin.meal,
@@ -473,8 +534,13 @@ export async function POST(request: NextRequest) {
         glucoseValue: glucoseValue || undefined,
         note: message
       })
+    }
+
+    if (savedInsulins.length > 0) {
+      savedData.insulins = savedInsulins
+      console.log('[MOTOR DE DADOS] Insulinas do stream salvas:', savedInsulins.length)
     } else {
-      console.log('[MOTOR DE DADOS] Sem insulina para salvar')
+      console.log('[MOTOR DE DADOS] Nenhuma insulina do stream para salvar')
     }
 
     // ============================================
