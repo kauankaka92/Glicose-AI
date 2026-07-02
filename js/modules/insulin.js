@@ -472,7 +472,14 @@ function renderPage() {
   }
 }
 
-function init()    { currentResult = null; currentInputs = null; renderPage(); }
+function init() {
+  currentResult = null;
+  currentInputs = null;
+  renderPage();
+  window.addEventListener('insulin:registered', () => {
+    if (document.getElementById('insulin-content')) renderPage();
+  });
+}
 function refresh() { renderPage(); }
 
 export { init, refresh };

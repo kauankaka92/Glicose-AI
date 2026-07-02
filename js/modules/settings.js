@@ -54,15 +54,15 @@ function toCSV(rows, headers) {
 function exportCSV() {
   const settings = getSettings();
   const gCSV = toCSV(
-    getList(KEYS.GLUCOSE).map(r => ({ datetime: formatDateTime(r.datetime), value: r.value, status: getGlucoseStatus(r.value, settings).label, notes: r.notes || '' })),
+    getList(KEYS.GLUCOSE).map(r => ({ datetime: formatDateTime(r.date || r.datetime), value: r.value, status: getGlucoseStatus(r.value, settings).label, notes: r.notes || '' })),
     ['datetime','value','status','notes']
   );
   const fCSV = toCSV(
-    getList(KEYS.FOOD).map(r => ({ datetime: formatDateTime(r.date || r.datetime), name: r.name, calories: r.calories || '', carbs: r.carbs || '', protein: r.protein || '', fat: r.fat || '', category: r.category || '' })),
+    getList(KEYS.FOOD).map(r => ({ datetime: formatDateTime(r.date || r.datetime), name: r.name, calories: r.kcal || r.calories || '', carbs: r.carbs || '', protein: r.protein || '', fat: r.fat || '', category: r.category || '' })),
     ['datetime','name','calories','carbs','protein','fat','category']
   );
   const iCSV = toCSV(
-    getList(KEYS.INSULIN).map(r => ({ datetime: formatDateTime(r.datetime), totalDose: r.totalDose, correctionDose: r.correctionDose || '', mealDose: r.mealDose || '', glucose: r.glucose || '' })),
+    getList(KEYS.INSULIN).map(r => ({ datetime: formatDateTime(r.date || r.datetime), totalDose: r.total || r.totalDose, correctionDose: r.correction || r.correctionDose || '', mealDose: r.meal || r.mealDose || '', glucose: r.glucose || '' })),
     ['datetime','totalDose','correctionDose','mealDose','glucose']
   );
   downloadBlob(`=== GLICOSE ===\n${gCSV}\n\n=== ALIMENTAÇÃO ===\n${fCSV}\n\n=== INSULINA ===\n${iCSV}`, `glicose-ai-dados-${dateTag()}.csv`, 'text/csv;charset=utf-8;');
@@ -77,13 +77,13 @@ function exportPDF() {
 
   const gRows = glucose.map(r => {
     const s = getGlucoseStatus(r.value, settings);
-    return `<tr><td>${formatDateTime(r.datetime)}</td><td><b>${r.value} mg/dL</b></td><td>${s.label}</td><td>${r.notes||'—'}</td></tr>`;
+    return `<tr><td>${formatDateTime(r.date || r.datetime)}</td><td><b>${r.value} mg/dL</b></td><td>${s.label}</td><td>${r.notes||'—'}</td></tr>`;
   }).join('');
   const fRows = food.map(r =>
-    `<tr><td>${formatDateTime(r.date||r.datetime)}</td><td>${r.name}</td><td>${r.calories||'—'}</td><td>${r.carbs||'—'}</td><td>${r.category||'—'}</td></tr>`
+    `<tr><td>${formatDateTime(r.date||r.datetime)}</td><td>${r.name}</td><td>${r.kcal||r.calories||'—'}</td><td>${r.carbs||'—'}</td><td>${r.category||'—'}</td></tr>`
   ).join('');
   const iRows = insulin.map(r =>
-    `<tr><td>${formatDateTime(r.datetime)}</td><td>${r.totalDose} U</td><td>${r.correctionDose||'—'}</td><td>${r.mealDose||'—'}</td></tr>`
+    `<tr><td>${formatDateTime(r.date || r.datetime)}</td><td>${r.total || r.totalDose} U</td><td>${r.correction || r.correctionDose||'—'}</td><td>${r.meal || r.mealDose||'—'}</td></tr>`
   ).join('');
 
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Glicose AI — Relatório ${dateTag()}</title>
@@ -231,7 +231,12 @@ function bindEvents() {
   });
 }
 
-function init() { renderPage(); }
+function init() {
+  renderPage();
+  window.addEventListener('settings:updated', () => {
+    if (document.getElementById('settings-content')) renderPage();
+  });
+}
 function refresh() { renderPage(); }
 
 export { init, refresh };

@@ -33,8 +33,8 @@
   width: 34px;
   height: 34px;
   border-radius: var(--radius-sm);
-  background: var(--danger-light);
-  color: var(--danger);
+  background: var(--accent-light);
+  color: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -99,8 +99,8 @@
   width: 64px;
   height: 64px;
   border-radius: 20px;
-  background: var(--danger-light);
-  color: var(--danger);
+  background: var(--accent-light);
+  color: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -156,9 +156,9 @@
 }
 
 .ai-chip:hover {
-  border-color: var(--danger);
+  border-color: var(--accent);
   color: var(--text-primary);
-  background: var(--danger-light);
+  background: var(--accent-light);
 }
 
 .ai-chip-icon {
@@ -222,8 +222,8 @@
   width: 26px;
   height: 26px;
   border-radius: var(--radius-xs);
-  background: var(--danger-light);
-  color: var(--danger);
+  background: var(--accent-light);
+  color: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -295,7 +295,7 @@
   color: white;
 }
 
-.nlp-icon--glucose { background: var(--danger); }
+.nlp-icon--glucose { background: var(--accent); }
 .nlp-icon--meal    { background: var(--success); }
 .nlp-icon--insulin { background: var(--info); }
 .nlp-icon--carbs   { background: var(--warning); }
@@ -315,7 +315,7 @@
   padding-left: 2px;
 }
 
-.nlp-value--glucose { color: var(--danger); }
+.nlp-value--glucose { color: var(--accent); }
 .nlp-value--insulin { color: var(--info); }
 
 .nlp-foods {
@@ -437,8 +437,8 @@
 }
 
 .ai-input-wrap:focus-within {
-  border-color: var(--danger);
-  box-shadow: 0 0 0 3px var(--danger-light);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
 }
 
 .ai-input-icon {
@@ -449,7 +449,7 @@
 }
 
 .ai-input-wrap:focus-within .ai-input-icon {
-  color: var(--danger);
+  color: var(--accent);
 }
 
 #ai-input {
@@ -470,7 +470,7 @@
   width: 42px;
   height: 42px;
   border-radius: var(--radius-full);
-  background: var(--danger);
+  background: var(--accent);
   color: white;
   display: flex;
   align-items: center;
@@ -480,7 +480,7 @@
 }
 
 #ai-send:hover:not(:disabled) {
-  background: var(--danger);
+  background: var(--accent);
   filter: brightness(1.1);
   transform: scale(1.06);
 }

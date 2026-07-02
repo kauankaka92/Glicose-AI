@@ -413,7 +413,13 @@ function renderPage() {
   bindPageEvents();
 }
 
-function init()    { state = { search: '', period: 'Todos', sort: 'newest', editingId: null }; renderPage(); }
+function init() {
+  state = { search: '', period: 'Todos', sort: 'newest', editingId: null };
+  renderPage();
+  window.addEventListener('glucose:registered', () => {
+    if (document.getElementById('glucose-content')) renderPage();
+  });
+}
 function refresh() { renderPage(); }
 
 export { init, refresh };

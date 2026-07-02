@@ -4,8 +4,8 @@
   "description": "Monitoramento inteligente de glicose para diabéticos",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#6366f1",
+  "background_color": "#05070f",
+  "theme_color": "#ff4766",
   "orientation": "portrait-primary",
   "icons": [
     { "src": "/icons/icon-72.svg",  "sizes": "72x72",   "type": "image/svg+xml" },

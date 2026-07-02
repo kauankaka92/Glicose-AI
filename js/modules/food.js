@@ -526,7 +526,13 @@ function renderPage() {
   bindPageEvents();
 }
 
-function init()    { state = { search: '', category: 'Todas', editingId: null }; renderPage(); }
+function init() {
+  state = { search: '', category: 'Todas', editingId: null };
+  renderPage();
+  window.addEventListener('food:registered', () => {
+    if (document.getElementById('food-content')) renderPage();
+  });
+}
 function refresh() { renderPage(); }
 
 export { init, refresh };

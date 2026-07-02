@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="description" content="Monitoramento inteligente de glicose para diabéticos" />
-  <meta name="theme-color" content="#0f172a" />
+  <meta name="theme-color" content="#05070f" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -30,9 +30,16 @@
   <!-- Splash Screen -->
   <div id="splash" role="status" aria-label="Carregando Glicose AI">
     <div class="splash-logo" aria-hidden="true">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/>
-        <circle cx="12" cy="9" r="2.5"/>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+        <path d="M256 120 C256 120 146 250 146 320 C146 380.7 195.3 430 256 430 C316.7 430 366 380.7 366 320 C366 250 256 120 256 120 Z" fill="url(#dropGradSplash)" />
+        <path d="M190 310 H230 L242 275 L254 345 L266 295 L278 325 L290 310 H322" stroke="#ffffff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M256 215 L260 235 L280 239 L260 243 L256 263 L252 243 L232 239 L252 235 Z" fill="#ffffff" />
+        <defs>
+          <linearGradient id="dropGradSplash" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#ff4766" />
+            <stop offset="100%" stop-color="#e11d48" />
+          </linearGradient>
+        </defs>
       </svg>
     </div>
     <h1 class="splash-title">Glicose AI</h1>

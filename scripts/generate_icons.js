@@ -1,4 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 512 512">
+const fs = require('fs');
+const path = require('path');
+
+const dirs = [
+  'C:\\Glicose AI\\icons',
+  'C:\\Glicose AI\\app\\icons',
+  'C:\\Glicose AI\\android_app\\assets\\www\\icons'
+];
+
+const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+
+const getSvg = (size) => {
+  const rx = Math.round(size * (110 / 512));
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 512 512">
   <defs>
     <!-- Background Gradient -->
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -17,7 +30,7 @@
     </filter>
   </defs>
   <!-- Background Card -->
-  <rect width="512" height="512" rx="41" fill="url(#bgGrad)" stroke="rgba(255, 255, 255, 0.06)" stroke-width="2"/>
+  <rect width="512" height="512" rx="${rx}" fill="url(#bgGrad)" stroke="rgba(255, 255, 255, 0.06)" stroke-width="2"/>
   
   <!-- Outer Glow Ring -->
   <circle cx="256" cy="270" r="150" fill="none" stroke="rgba(255, 71, 102, 0.06)" stroke-width="32" filter="url(#glow)"/>
@@ -30,4 +43,28 @@
 
   <!-- AI Spark / Pulse inside Droplet -->
   <path d="M256 215 L260 235 L280 239 L260 243 L256 263 L252 243 L232 239 L252 235 Z" fill="#ffffff" />
-</svg>
+</svg>`;
+};
+
+for (const dir of dirs) {
+  if (!fs.existsSync(dir)) {
+    console.log(`Directory ${dir} does not exist, creating it...`);
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+    } catch (e) {
+      console.error(`Failed to create directory: ${dir}`, e.message);
+    }
+  }
+  for (const size of sizes) {
+    const filename = `icon-${size}.svg`;
+    const filepath = path.join(dir, filename);
+    const content = getSvg(size);
+    try {
+      fs.writeFileSync(filepath, content);
+      console.log(`Wrote ${filepath}`);
+    } catch (e) {
+      console.error(`Failed to write file: ${filepath}`, e.message);
+    }
+  }
+}
+console.log('Icon generation completed!');
