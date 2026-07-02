@@ -45,8 +45,10 @@ git commit -m "chore: sync completo %DATA% %HORA%"
 echo.
 
 echo [6/6] Enviando para GitHub...
+cmdkey /delete:git:https://github.com >nul 2>&1
+cmdkey /delete:https://github.com >nul 2>&1
 git branch -M main
-git push -u origin main --force
+git -c credential.helper= -c credential.username=kauankaka92 push -u origin main --force
 
 echo.
 if %errorlevel% == 0 (
