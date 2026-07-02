@@ -1,5 +1,5 @@
-import { GlucoseEntry, GlucoseStats, TrendData, UserSettings } from './types'
-import { getGlucoseEntries, getSettings } from './storage'
+import { GlucoseEntry, GlucoseStats, TrendData, UserSettings, FoodEntry, InsulinEntry } from './types'
+import { getGlucoseEntries, getSettings, getFoodEntries, getInsulinEntries } from './storage'
 
 export function calculateGlucoseStats(entries: GlucoseEntry[]): GlucoseStats {
   if (entries.length === 0) {
@@ -209,4 +209,235 @@ export function getPercentageInTarget(entries: GlucoseEntry[], targetMin: number
 
   const inTarget = entries.filter((e) => e.value >= targetMin && e.value <= targetMax).length
   return Math.round((inTarget / entries.length) * 100)
+}
+
+// ============================================
+// ANÁLISE NUTRICIONAL AVANÇADA
+// ============================================
+
+export interface NutritionAnalysis {
+  totalCarbs: number
+  totalProtein: number
+  totalFat: number
+  totalCalories: number
+  mealsCount: number
+  avgCarbsPerMeal: number
+  healthScore: number  // 0-100
+  recommendations: string[]
+}
+
+export function analyzeNutrition(foodEntries: FoodEntry[], days: number = 7): NutritionAnalysis {
+  const now = new Date()
+  const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
+
+  const recentFoods = foodEntries.filter(f => new Date(f.timestamp) >= cutoff)
+
+  let totalCarbs = 0
+  let totalProtein = 0
+  let totalFat = 0
+  let totalCalories = 0
+
+  for (const food of recentFoods) {
+    totalCarbs += food.totalCarbs
+    // Estimativa baseada em carbs (simplificado)
+    totalProtein += food.totalCarbs * 0.15
+    totalFat += food.totalCarbs * 0.08
+    totalCalories += food.totalCarbs * 4.5
+  }
+
+  const mealsCount = recentFoods.length
+  const avgCarbsPerMeal = mealsCount > 0 ? Math.round(totalCarbs / mealsCount) : 0
+
+  // Health Score calculation
+  let healthScore = 70
+  const recommendations: string[] = []
+
+  // Analisar consistência de refeições
+  if (mealsCount < days * 2) {
+    healthScore -= 10
+    recommendations.push('Registre mais refeições para melhor acompanhamento')
+  }
+
+  // Analisar média de carbs
+  if (avgCarbsPerMeal > 60) {
+    healthScore -= 15
+    recommendations.push('Média de carboidratos elevada. Considere reduzir para 30-45g por refeição')
+  } else if (avgCarbsPerMeal < 20) {
+    healthScore -= 10
+    recommendations.push('Média de carboidratos baixa. Mantenha alimentação balanceada')
+  } else {
+    healthScore += 10
+  }
+
+  // Analisar variedade (simplificado)
+  const uniqueFoods = new Set(recentFoods.flatMap(f => f.items.map(i => i.name.toLowerCase())))
+  if (uniqueFoods.size < 10) {
+    healthScore -= 5
+    recommendations.push('Aumente a variedade de alimentos na dieta')
+  } else {
+    healthScore += 5
+  }
+
+  // Analisar distribuição de macros (simplificado)
+  const carbPercent = totalCalories > 0 ? (totalCarbs * 4 / totalCalories) * 100 : 0
+  if (carbPercent > 60) {
+    healthScore -= 5
+    recommendations.push('Proporção de carboidratos alta. Considere balancear com proteínas e gorduras')
+  } else if (carbPercent >= 45) {
+    healthScore += 5
+  }
+
+  healthScore = Math.max(0, Math.min(100, healthScore))
+
+  if (recommendations.length === 0) {
+    recommendations.push('Parabéns! Seus padrões alimentares estão saudáveis')
+  }
+
+  return {
+    totalCarbs: Math.round(totalCarbs),
+    totalProtein: Math.round(totalProtein),
+    totalFat: Math.round(totalFat),
+    totalCalories: Math.round(totalCalories),
+    mealsCount,
+    avgCarbsPerMeal,
+    healthScore,
+    recommendations
+  }
+}
+
+export interface GlucoseVariability {
+  cv: number  // Coefficient of Variation
+  sd: number  // Standard Deviation
+  mean: number
+  stability: 'excelente' | 'boa' | 'moderada' | 'instável'
+  score: number  // 0-100
+}
+
+export function analyzeGlucoseVariability(entries: GlucoseEntry[]): GlucoseVariability {
+  if (entries.length < 3) {
+    return { cv: 0, sd: 0, mean: 0, stability: 'estável', score: 50 }
+  }
+
+  const values = entries.map(e => e.value)
+  const mean = values.reduce((a, b) => a + b, 0) / values.length
+  const variance = values.reduce((acc, v) => acc + Math.pow(v - mean, 2), 0) / values.length
+  const sd = Math.sqrt(variance)
+  const cv = mean > 0 ? (sd / mean) * 100 : 0
+
+  // Classificar estabilidade
+  let stability: 'excelente' | 'boa' | 'moderada' | 'instável'
+  let score: number
+
+  if (cv < 20) {
+    stability = 'excelente'
+    score = 95
+  } else if (cv < 30) {
+    stability = 'boa'
+    score = 75
+  } else if (cv < 40) {
+    stability = 'moderada'
+    score = 55
+  } else {
+    stability = 'instável'
+    score = 35
+  }
+
+  return { cv: Math.round(cv * 10) / 10, sd: Math.round(sd), mean: Math.round(mean), stability, score }
+}
+
+export interface DailyPattern {
+  date: string
+  readings: number
+  avgGlucose: number
+  timeInRange: number
+  mealsCount: number
+  insulinTotal: number
+}
+
+export function getDailyPatterns(days: number = 7): DailyPattern[] {
+  const glucose = getGlucoseEntries()
+  const food = getFoodEntries()
+  const insulin = getInsulinEntries()
+
+  const patterns: DailyPattern[] = []
+  const now = new Date()
+
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
+    const dateStr = date.toISOString().split('T')[0]
+    const dayStart = new Date(dateStr + 'T00:00:00')
+    const dayEnd = new Date(dateStr + 'T23:59:59')
+
+    const dayGlucose = glucose.filter(e => {
+      const t = new Date(e.timestamp)
+      return t >= dayStart && t <= dayEnd
+    })
+
+    const dayFood = food.filter(e => {
+      const t = new Date(e.timestamp)
+      return t >= dayStart && t <= dayEnd
+    })
+
+    const dayInsulin = insulin.filter(e => {
+      const t = new Date(e.timestamp)
+      return t >= dayStart && t <= dayEnd
+    })
+
+    const avgGlucose = dayGlucose.length > 0
+      ? Math.round(dayGlucose.reduce((acc, e) => acc + e.value, 0) / dayGlucose.length)
+      : 0
+
+    const inRange = dayGlucose.filter(e => e.value >= 70 && e.value <= 180).length
+    const timeInRange = dayGlucose.length > 0
+      ? Math.round((inRange / dayGlucose.length) * 100)
+      : 0
+
+    const insulinTotal = dayInsulin.reduce((acc, e) => acc + e.total, 0)
+
+    patterns.push({
+      date: dateStr,
+      readings: dayGlucose.length,
+      avgGlucose,
+      timeInRange,
+      mealsCount: dayFood.length,
+      insulinTotal: Math.round(insulinTotal * 10) / 10
+    })
+  }
+
+  return patterns
+}
+
+export function getEatingQualityScore(foodEntries: FoodEntry[], glucoseEntries: GlucoseEntry[]): {
+  score: number
+  grade: 'A' | 'B' | 'C' | 'D' | 'F'
+  factors: { name: string; impact: number }[]
+} {
+  const analysis = analyzeNutrition(foodEntries)
+  const variability = analyzeGlucoseVariability(glucoseEntries)
+  const distribution = getGlucoseDistribution(glucoseEntries)
+
+  const factors: { name: string; impact: number }[] = []
+
+  // Base score da análise nutricional
+  let score = analysis.healthScore
+  factors.push({ name: 'Qualidade Nutricional', impact: Math.round((analysis.healthScore - 70) * 0.3) })
+
+  // Fator variabilidade glicêmica
+  score += (variability.score - 70) * 0.4
+  factors.push({ name: 'Estabilidade Glicêmica', impact: Math.round((variability.score - 70) * 0.4) })
+
+  // Fator Time in Range
+  score += (distribution.inRangePercent - 70) * 0.3
+  factors.push({ name: 'Tempo na Faixa', impact: Math.round((distribution.inRangePercent - 70) * 0.3) })
+
+  score = Math.max(0, Math.min(100, score))
+
+  let grade: 'A' | 'B' | 'C' | 'D' | 'F'
+  if (score >= 85) grade = 'A'
+  else if (score >= 70) grade = 'B'
+  else if (score >= 55) grade = 'C'
+  else if (score >= 40) grade = 'D'
+  else grade = 'F'
+
+  return { score: Math.round(score), grade, factors }
 }
