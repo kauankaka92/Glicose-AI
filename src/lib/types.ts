@@ -118,3 +118,26 @@ export function getGlucoseStatusLabel(value: number): string {
   }
   return labels[status]
 }
+
+// Chat types
+export interface ChatAction {
+  type: 'save_glucose' | 'save_insulin' | 'save_food' | 'save_note' | 'read_data' | 'none'
+  data?: Record<string, any>
+  confirmed?: boolean
+}
+
+export interface ChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: string
+  actions?: ChatAction[]
+}
+
+export interface ChatConversation {
+  id: string
+  title: string
+  messages: ChatMessage[]
+  createdAt: string
+  updatedAt: string
+}
