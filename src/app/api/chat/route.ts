@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     const settings = clientSettings || getSettings()
 
     // ============================================
-    // 1. EXTRATOR DE GLICOSE
+    // 1. EXTRATOR DE GLICOSE - REVISADO
     // ============================================
     const glucosePatterns = [
       /glicose\s*[:\-]?\s*(\d{2,3})/i,
@@ -59,7 +59,11 @@ export async function POST(request: NextRequest) {
       /(\d{2,3})\s*(?:de\s*)?glicemia/i,
       /(\d{2,3})\s*mg(?:\/dl)?/i,
       /pra\s*(\d{2,3})\s*(?:de\s*)?glicose/i,
-      // Novo padrão: número isolado no início seguido de contexto
+      // Padrão: "antes do almoco: 183" ou "apos cafe: 200"
+      /(?:antes|depois|apos|pos|em jejum|jejum)\s+(?:do|da|de)?\s*(?:almoco|almoço|cafe|café|janta|jantar|refeicao|refeição)\s*[:\-]?\s*(\d{2,3})/i,
+      // Padrão: número no final da frase após contexto
+      /(?:ao\s+acordar|antes\s+do|depois\s+do|apos\s+o|em\s+jejum)\s+(?:.*?)(\d{2,3})\s*(?:mg|mg\/dl)?$/i,
+      // Padrão simples: apenas número seguido de contexto
       /^(\d{2,3})\s+(?:ao\s+acordar|antes\s+|apos\s+|depois\s+|em\s+jejum|jejum)/i,
     ]
 
@@ -100,43 +104,82 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================
-    // 3. EXTRATOR DE ALIMENTOS
+    // 3. EXTRATOR DE ALIMENTOS - REVISADO
     // ============================================
+
+    // Palavras-chave de alimentos VALIDAS
     const foodKeywords = [
       'arroz', 'feijão', 'feijao', 'carne', 'frango', 'peixe', 'ovo', 'ovos',
       'salada', 'verdura', 'legume', 'fruta', 'banana', 'maçã', 'maca', 'laranja',
       'pão', 'pao', 'paozinho', 'paozito', 'paosinho', 'paocinho', 'paodequeijo', 'pão de queijo',
-      'queijo', 'presunto', 'mussarela', 'muzzlearela',
+      'queijo', 'presunto', 'mussarela', 'muzzlearela', 'manteiga', 'requeijao', 'requeijão',
       'macarrão', 'macarrao', 'espaguete', 'lasanha',
       'batata', 'mandioca', 'aipim', 'macaxeira',
-      'bolacha', 'biscoito', 'bolacha', 'torrada',
-      ' bolo', 'bolo', 'torta', 'doce', 'açucar', 'acucar', 'chocolate',
+      'bolacha', 'biscoito', 'torrada',
+      'bolo', 'torta', 'doce', 'açucar', 'acucar', 'chocolate',
       'café', 'cafe', 'leite', 'suco', 'refrigerante', 'refri', 'cerveja', 'vinho',
       'pizza', 'hamburguer', 'hambúrguer', 'lanche', 'sanduiche', 'sanduíche',
-      'feijoada', 'churrasco', 'หอมหม้อ', 'кори', 'tapioca', 'mingau'
+      'feijoada', 'churrasco', 'tapioca', 'mingau', 'sopa', 'caldo',
+      'pedacos', 'pedaço', 'pedaços', 'fatia', 'fatias', 'copo', 'copos', 'xicara', 'xícaras'
     ]
 
-    const mealPattern = /(?:comi|comedo|almocar|almocei|jantei|jantar|lanchei|lanchonete|cafe|café|comida|refeição|refeicao|aliment(?:ação|acao)|comeu|mastigar|degust(?:e|i|ar)| Tomei|Tomei| tomei| tomei)\s*(?:de)?\s*(.+)/i
-    const mealMatch = message.match(mealPattern)
+    // Palavras para EXCLUIR (não são alimentos)
+    const excludeWords = [
+      'junto', 'tudo', 'isso', 'aquilo', 'nada', 'mais', 'nao', 'não', 'sim',
+      'que', 'com', 'para', 'por', 'de', 'do', 'da', 'dos', 'das', 'um', 'uma',
+      'uns', 'umas', 'o', 'a', 'os', 'as', 'e', 'ou', 'mas', 'se', 'na', 'no',
+      'manha', 'manhã', 'tarde', 'noite', 'dia', 'hoje', 'ontem', 'amanha',
+      'cafe', 'café', 'almoco', 'almoço', 'janta', 'jantar', 'lanche',
+      'antes', 'depois', 'apos', 'após', 'pos', 'pós',
+      'acordar', 'acordei', 'jejum', 'dormir', 'cama', 'exercício', 'exercicio',
+      'glicose', 'glicemia', 'medir', 'medi', 'insulina', 'correcao', 'correção',
+      'unidades', 'u', 'ui', 'correea', 'corri'
+    ]
+
+    // Padrões que indicam descrição de refeição
+    const mealPatterns = [
+      /(?:comi|comedo|almocar|almocei|jantei|jantar|lanchei|cafetei|café da manhã|cafe da manha)\s+(.+)/i,
+      /(?:tomei|bebi|consume|consumi)\s+(.+)/i,
+      /(?:para|no|do|da)\s+(?:cafe|café|almoco|almoço|janta|jantar|lanche)\s*[:\-]?\s*(.+)/i,
+    ]
 
     let foods: string[] = []
     let carbsEstimate: number | undefined = undefined
 
-    if (mealMatch) {
-      const foodText = mealMatch[1].toLowerCase()
-      foods = foodKeywords.filter(kw => foodText.includes(kw))
+    // Tentar capturar descrição de refeição
+    let mealText = ''
+    for (const pattern of mealPatterns) {
+      const match = message.match(pattern)
+      if (match) {
+        mealText = match[1].toLowerCase()
+        console.log('[MOTOR DE DADOS] Texto de alimento capturado:', mealText)
+        break
+      }
+    }
 
-      // Palavras para excluir (não são alimentos)
-      const excludeWords = ['junto', 'tudo', 'isso', 'aquilo', 'nada', 'mais', 'nao', 'não', 'sim', 'que', 'com', 'para', 'por']
+    if (mealText) {
+      // Extrair palavras-chave de alimentos do texto
+      foods = foodKeywords.filter(kw => mealText.includes(kw))
+
+      // Filtrar palavras excluídas
       foods = foods.filter(f => !excludeWords.includes(f))
 
+      // Remover duplicatas
+      foods = [...new Set(foods)]
+
+      // Se não encontrou keywords, tenta extrair substantivos
       if (foods.length === 0) {
-        // Se nao capturou keywords, tenta extrair substantivos
-        const candidates = foodText.split(/[\s,]+/).filter(w => w.length > 3)
-        foods = candidates.filter(w => !excludeWords.includes(w)).slice(0, 5)
+        const candidates = mealText
+          .replace(/[.,:;]/g, ' ')
+          .split(/[\s]+/)
+          .filter(w => w.length > 3 && !excludeWords.includes(w) && !/^\d+$/.test(w))
+        foods = candidates.slice(0, 5)
       }
 
-      carbsEstimate = estimateCarbs(foods)
+      if (foods.length > 0) {
+        carbsEstimate = estimateCarbs(foods, mealText)
+        console.log('[MOTOR DE DADOS] Alimentos detectados:', foods, 'carbs:', carbsEstimate)
+      }
     }
 
     // ============================================
@@ -314,28 +357,40 @@ function calculateInsulinCorrection(glucose: number, target: number, factor: num
   return Math.round(correction * 2) / 2
 }
 
-function estimateCarbs(foods: string[]): number {
+function estimateCarbs(foods: string[], mealText?: string): number {
   const carbTable: Record<string, number> = {
     arroz: 28, feijao: 14, feijão: 14,
     carne: 0, frango: 0, peixe: 0, ovo: 1, ovos: 1,
     salada: 5, verdura: 5, legume: 8,
     banana: 23, maçã: 14, maca: 14, laranja: 12,
     pao: 15, pão: 15, paozinho: 15, paozito: 15, paosinho: 15, paocinho: 15, paodequeijo: 15,
-    queijo: 2, presunto: 2, mussarela: 2, muzzlearela: 2,
+    queijo: 2, presunto: 2, mussarela: 2, muzzlearela: 2, manteiga: 1, requeijao: 3, requeijão: 3,
     macarrao: 30, macarrão: 30, espaguete: 30, lasanha: 35,
     batata: 17, mandioca: 25, aipim: 25, macaxeira: 25,
     bolacha: 15, biscoito: 15, torrada: 15,
     bolo: 35, torta: 30, doce: 20, acucar: 15, açúcar: 15, chocolate: 25,
     cafe: 0, café: 0, leite: 12, suco: 15, refrigerante: 35, refri: 35, cerveja: 10, vinho: 5,
     pizza: 35, hamburguer: 25, hambúrguer: 25, lanche: 30, sanduiche: 30, sanduíche: 30,
-    feijoada: 40, churrasco: 5, tapioca: 35, mingau: 25
+    feijoada: 40, churrasco: 5, tapioca: 35, mingau: 25, sopa: 15, caldo: 12,
+    pedacos: 5, pedaço: 5, pedaços: 5, fatia: 10, fatias: 10, copo: 15, copos: 15, xicara: 10, xícaras: 10
   }
+
+  // Verificar se tem quantidades no texto
+  const quantityMatch = mealText?.match(/(\d+)\s*(?:pedacos|pedaços|pedaço|fatias|fatia|copos|copo|xicaras|xícaras)/i)
+  const quantity = quantityMatch ? parseInt(quantityMatch[1], 10) : 1
 
   let total = 0
   for (const food of foods) {
     const normalized = food.toLowerCase().trim()
-    total += carbTable[normalized] || 15
+    const baseCarbs = carbTable[normalized] || 15
+    total += baseCarbs
   }
+
+  // Se tem quantidade, multiplicar
+  if (quantity > 1 && foods.length <= 2) {
+    total = total * quantity
+  }
+
   return total
 }
 
