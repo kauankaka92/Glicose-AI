@@ -24,7 +24,7 @@ git config user.name "kauankaka92"
 echo       Usuario: kauankaka92 / leitekauan538@gmail.com
 echo.
 git remote remove origin 2>nul
-git remote add origin https://github.com/kauankaka92/Glicose-AI.git
+git remote add origin https://kauankaka92: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@github.com/kauankaka92/Glicose-AI.git
 echo       OK: https://github.com/kauankaka92/Glicose-AI.git
 echo.
 
@@ -45,10 +45,8 @@ git commit -m "chore: sync completo %DATA% %HORA%"
 echo.
 
 echo [6/6] Enviando para GitHub...
-cmdkey /delete:git:https://github.com >nul 2>&1
-cmdkey /delete:https://github.com >nul 2>&1
 git branch -M main
-git -c credential.helper= -c credential.username=kauankaka92 push -u origin main --force
+git push -u origin main --force
 
 echo.
 if %errorlevel% == 0 (
