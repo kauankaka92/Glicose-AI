@@ -54,11 +54,13 @@ export async function POST(request: NextRequest) {
     const glucosePatterns = [
       /glicose\s*[:\-]?\s*(\d{2,3})/i,
       /glicemia\s*[:\-]?\s*(\d{2,3})/i,
-      /(?: đo|medir|medi)\s*(?:de\s*)?(?:glicose|glicemia)?\s*(\d{2,3})/i,
+      /(?: med(?:ir|i))\s*(?:de\s*)?(?:glicose|glicemia)?\s*(\d{2,3})/i,
       /(\d{2,3})\s*(?:de\s*)?glicose/i,
       /(\d{2,3})\s*(?:de\s*)?glicemia/i,
-      /(\d{2,3})\s*mg/i,
+      /(\d{2,3})\s*mg(?:\/dl)?/i,
       /pra\s*(\d{2,3})\s*(?:de\s*)?glicose/i,
+      // Novo padrão: número isolado no início seguido de contexto
+      /^(\d{2,3})\s+(?:ao\s+acordar|antes\s+|apos\s+|depois\s+|em\s+jejum|jejum)/i,
     ]
 
     let glucoseValue: number | null = null
@@ -129,6 +131,26 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================
+    // 3.5. EXTRATOR DE INSULINA EXPLÍCITA
+    // ============================================
+    let explicitInsulin: number | null = null
+    const insulinPatterns = [
+      /tomei\s*(\d+(?:\.\d+)?)\s*(?:unidades|u|ui)/i,
+      /apliquei\s*(\d+(?:\.\d+)?)\s*(?:unidades|u|ui)/i,
+      /(\d+(?:\.\d+)?)\s*(?:unidades|u|ui)\s*(?:de\s*)?(?:insulina|correção|correao)/i,
+      /insulina\s*(\d+(?:\.\d+)?)\s*(?:unidades|u)?/i,
+    ]
+
+    for (const pattern of insulinPatterns) {
+      const match = message.match(pattern)
+      if (match) {
+        explicitInsulin = parseFloat(match[1])
+        console.log('[MOTOR DE DADOS] Insulina explícita detectada:', explicitInsulin, 'pattern:', pattern.toString())
+        break
+      }
+    }
+
+    // ============================================
     // 4. MONTAR EVENTO ESTRUTURADO
     // ============================================
     const event: ChatEvent = {
@@ -172,6 +194,16 @@ export async function POST(request: NextRequest) {
         }
         event.actions.push('calculate_dose')
       }
+    }
+
+    // Se usuário mencionou insulina explícita (ex: "tomei 5 unidades")
+    if (explicitInsulin && explicitInsulin > 0) {
+      event.insulin = {
+        correction: explicitInsulin,
+        meal: 0,
+        total: explicitInsulin
+      }
+      event.actions.push('save_insulin_dose')
     }
 
     // ============================================
