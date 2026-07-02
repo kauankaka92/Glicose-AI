@@ -22,14 +22,15 @@ export default function SettingsPage() {
   }, [])
 
   const handleChange = (key: keyof UserSettings, value: string) => {
-    const numValue = parseFloat(value)
+    const numValue = parseFloat(value.replace(',', '.'))
     if (!isNaN(numValue) && numValue > 0) {
       setSettings((prev) => ({ ...prev, [key]: numValue }))
     }
   }
 
   const handleSave = () => {
-    saveSettings(settings)
+    const updated = saveSettings(settings)
+    console.log('Settings salvas:', updated)
     setAlert({ type: 'success', message: 'Configurações salvas com sucesso!' })
     setTimeout(() => setAlert(null), 3000)
   }

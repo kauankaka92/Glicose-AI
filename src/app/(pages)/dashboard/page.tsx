@@ -383,14 +383,23 @@ export default function Dashboard() {
           <Button
             variant="primary"
             glow
+            onClick={() => window.location.href = '/glucose'}
             style={{ flex: 1 }}
           >
             + Glicose
           </Button>
-          <Button variant="secondary" style={{ flex: 1 }}>
+          <Button
+            variant="secondary"
+            onClick={() => window.location.href = '/insulin'}
+            style={{ flex: 1 }}
+          >
             + Insulina
           </Button>
-          <Button variant="secondary" style={{ flex: 1 }}>
+          <Button
+            variant="secondary"
+            onClick={() => window.location.href = '/food'}
+            style={{ flex: 1 }}
+          >
             + Refeição
           </Button>
         </div>

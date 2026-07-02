@@ -93,27 +93,43 @@ Exemplo: "Sua dose seria de 2.5 unidades. [AÇÃO: save_insulin|{"correction": 2
       let response = 'Não consegui conectar ao servidor de IA. Verifique a API Key nas configurações do Vercel.'
       const actions: ChatAction[] = []
 
+      // Detectar contexto
+      let context: string = 'other'
+      if (text.includes('jejum') || text.includes('acordar')) context = 'fasting'
+      else if (text.includes('antes') || text.includes('pré')) context = 'before_meal'
+      else if (text.includes('depois') || text.includes('pós') || text.includes('após')) context = 'after_meal'
+      else if (text.includes('dormir') || text.includes('cama')) context = 'bedtime'
+      else if (text.includes('madrugada') || text.includes('noite')) context = 'night'
+      else if (text.includes('exercício') || text.includes('treino')) context = 'exercise'
+
       // Detectar glicose
-      const glucoseMatch = text.match(/(\d{2,3})\s*(mg|glicose)/)
+      const glucoseMatch = text.match(/(\d{2,3})\s*(mg|glicose)/) || text.match(/glicose.*?(\d{2,3})/)
       if (glucoseMatch) {
         const value = parseInt(glucoseMatch[1])
-        response = `Glicose detectada: ${value} mg/dL. Para calcular insulina, preciso do seu fator de correção.`
-        actions.push({ type: 'save_glucose', data: { value }, confirmed: false })
-      }
+        const note = lastMessage.match(/[0-9]\s+(.*)/)?.[1] || ''
+        response = `Glicose detectada: ${value} mg/dL ${context !== 'other' ? `(${context})` : ''}.`
+        actions.push({ type: 'save_glucose', data: { value, context, note }, confirmed: false })
 
-      // Detectar pergunta sobre insulina
-      if (text.includes('insulina') || text.includes('unidade')) {
-        const glucoseMatch2 = text.match(/(\d{2,3})/)
-        if (glucoseMatch2) {
-          const glucose = parseInt(glucoseMatch2[1])
-          const correction = Math.round((glucose - settings.targetGlucose) / settings.correctionFactor * 10) / 10
+        // Se mencionar insulina também
+        if (text.includes('insulina') || text.includes('unidade') || text.includes('aplicar')) {
+          const correction = Math.round((value - settings.targetGlucose) / settings.correctionFactor * 10) / 10
           if (correction > 0) {
-            response = `Para glicose de ${glucose} mg/dL: ${correction}U de correção.`
-            actions.push({ type: 'save_insulin', data: { correction, glucoseValue: glucose }, confirmed: false })
+            response += ` Para correção: ${correction}U.`
+            actions.push({ type: 'save_insulin', data: { correction, glucoseValue: value, meal: 0 }, confirmed: false })
           } else {
-            response = 'Sua glicose está no alvo. Não precisa de correção.'
+            response += ' Glicose no alvo, sem correção necessária.'
           }
         }
+      }
+
+      // Detectar carboidratos / refeição
+      const carbsMatch = text.match(/(\d+)\s*(g|grama|carb)/) || text.match(/carb.*?(\d+)/)
+      if (carbsMatch) {
+        const carbs = parseInt(carbsMatch[1])
+        const mealDose = Math.round((carbs / settings.carbRatio) * 10) / 10
+        response = `Para ${carbs}g de carboidratos: ${mealDose}U de insulina.`
+        actions.push({ type: 'save_food', data: { items: [{ name: 'Refeição', carbs }], mealType: 'lunch' }, confirmed: false })
+        actions.push({ type: 'save_insulin', data: { correction: 0, meal: mealDose }, confirmed: false })
       }
 
       return NextResponse.json({

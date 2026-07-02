@@ -12,6 +12,7 @@ import {
   setCurrentConversationId,
   ChatConversation,
 } from '@/lib/chat-storage'
+import { saveGlucose, saveInsulin, saveFood, getSettings } from '@/lib/storage'
 
 interface Message {
   id: string
@@ -202,7 +203,81 @@ export default function Chat() {
 
   const processAction = async (action: ChatAction) => {
     console.log('Processing action:', action)
-    alert(`Ação: ${action.type}\nDados: ${JSON.stringify(action.data, null, 2)}`)
+
+    if (!action.data) return
+
+    try {
+      switch (action.type) {
+        case 'save_glucose': {
+          const settings = getSettings()
+          const context = action.data.context || guessContext(action.data.note)
+          const entry = saveGlucose({
+            value: action.data.value,
+            timestamp: new Date().toISOString(),
+            context,
+            note: action.data.note,
+          })
+          alert(`Glicose registrada: ${action.data.value} mg/dL (${settings.targetGlucose} mg/dL alvo)`)
+          break
+        }
+        case 'save_insulin': {
+          const settings = getSettings()
+          const glucose = action.data.glucoseValue || 0
+          const correctionDose = action.data.correction || 0
+          const mealDose = action.data.meal || 0
+
+          // Calcular dose de refeição se tiver carbs
+          let finalMealDose = mealDose
+          if (action.data.carbs && settings.carbRatio) {
+            finalMealDose = Math.round((action.data.carbs / settings.carbRatio) * 10) / 10
+          }
+
+          const totalDose = Math.round((correctionDose + finalMealDose) * 10) / 10
+
+          saveInsulin({
+            correction: correctionDose,
+            meal: finalMealDose,
+            total: totalDose,
+            timestamp: new Date().toISOString(),
+            glucoseValue: glucose,
+            carbsValue: action.data.carbs,
+            note: action.data.note,
+          })
+          alert(`Insulina registrada: ${totalDose}U (correção: ${correctionDose}U, refeição: ${finalMealDose}U)`)
+          break
+        }
+        case 'save_food': {
+          const items = action.data.items || []
+          const totalCarbs = items.reduce((sum: number, item: any) => sum + (item.carbs || 0), 0)
+          saveFood({
+            items,
+            totalCarbs,
+            timestamp: new Date().toISOString(),
+            mealType: action.data.mealType || 'lunch',
+            note: action.data.note,
+          })
+          alert(`Refeição registrada: ${totalCarbs}g de carboidratos`)
+          break
+        }
+        default:
+          alert(`Ação: ${action.type}\nDados: ${JSON.stringify(action.data, null, 2)}`)
+      }
+    } catch (error) {
+      console.error('Erro ao processar ação:', error)
+      alert('Erro ao registrar. Tente manualmente.')
+    }
+  }
+
+  const guessContext = (note?: string): 'fasting' | 'before_meal' | 'after_meal' | 'bedtime' | 'night' | 'exercise' | 'other' => {
+    if (!note) return 'other'
+    const text = note.toLowerCase()
+    if (text.includes('jejum') || text.includes('acordar')) return 'fasting'
+    if (text.includes('antes') || text.includes('pré')) return 'before_meal'
+    if (text.includes('depois') || text.includes('pós') || text.includes('após')) return 'after_meal'
+    if (text.includes('dormir') || text.includes('cama')) return 'bedtime'
+    if (text.includes('madrugada') || text.includes('noite')) return 'night'
+    if (text.includes('exercício') || text.includes('treino') || text.includes('atividade')) return 'exercise'
+    return 'other'
   }
 
   return (
