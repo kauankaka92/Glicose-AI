@@ -11,12 +11,18 @@ import {
   setCurrentConversationId,
   ChatConversation,
 } from '@/lib/chat-storage'
+import { saveGlucose, saveInsulin, saveFood } from '@/lib/storage'
 
 interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
   timestamp: string
+}
+
+interface ChatAction {
+  type: 'save_glucose' | 'save_insulin' | 'save_food' | 'none'
+  data?: Record<string, any>
 }
 
 export default function Chat() {
@@ -127,6 +133,42 @@ export default function Chat() {
       const data = await response.json()
 
       if (data.success && data.data) {
+        // Executar ações no cliente (localStorage)
+        if (data.data.actions && data.data.actions.length > 0) {
+          data.data.actions.forEach((action: ChatAction) => {
+            if (action.type === 'save_glucose' && action.data) {
+              saveGlucose({
+                value: action.data.value,
+                timestamp: new Date().toISOString(),
+                context: action.data.context,
+                note: action.data.note,
+              })
+              console.log('Glucose saved via action:', action.data)
+            }
+            if (action.type === 'save_insulin' && action.data) {
+              saveInsulin({
+                correction: action.data.correction,
+                meal: action.data.meal,
+                total: action.data.total,
+                timestamp: new Date().toISOString(),
+                glucoseValue: action.data.glucoseValue,
+                note: action.data.note,
+              })
+              console.log('Insulin saved via action:', action.data)
+            }
+            if (action.type === 'save_food' && action.data) {
+              saveFood({
+                items: action.data.items,
+                totalCarbs: action.data.totalCarbs,
+                timestamp: new Date().toISOString(),
+                mealType: action.data.mealType,
+                note: action.data.note,
+              })
+              console.log('Food saved via action:', action.data)
+            }
+          })
+        }
+
         const assistantMessageId = (Date.now() + 1).toString()
         typeMessage(data.data.response, assistantMessageId)
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getGlucoseEntries, getFoodEntries, getInsulinEntries, getSettings, saveGlucose, saveInsulin, saveFood } from '@/lib/storage'
+import { getGlucoseEntries, getFoodEntries, getInsulinEntries, getSettings } from '@/lib/storage'
 import { calculateGlucoseStats, calculateTrend } from '@/lib/insights'
 
 const NVIDIA_NIM_API_URL = 'https://integrate.api.nvidia.com/v1/chat/completions'
@@ -77,66 +77,38 @@ export async function POST(request: NextRequest) {
     // SE tiver glicose E insulina na mesma mensagem -> registrar ambos
     if (glucoseValue && insulinValue) {
       const note = text.replace(/glicose|ao acordar|jejum|\d+/gi, '').trim().substring(0, 50)
-      console.log('Saving BOTH - Glucose:', glucoseValue, 'Insulin:', insulinValue, 'Context:', context, 'Note:', note)
-
-      saveGlucose({
-        value: glucoseValue,
-        timestamp: new Date().toISOString(),
-        context: context as any,
-        note: note || 'Registro via chat',
-      })
-      console.log('Glucose saved successfully')
-
-      saveInsulin({
-        correction: insulinValue,
-        meal: 0,
-        total: insulinValue,
-        timestamp: new Date().toISOString(),
-        glucoseValue: glucoseValue,
-        note: note || 'Correção via chat',
-      })
-      console.log('Insulin saved successfully')
+      console.log('Detected BOTH - Glucose:', glucoseValue, 'Insulin:', insulinValue, 'Context:', context)
 
       directResponse = {
         response: `✅ Registrado! Glicose: ${glucoseValue} mg/dL (${context}) e Insulina: ${insulinValue}U de correção.`,
-        actions: []
+        actions: [
+          { type: 'save_glucose', data: { value: glucoseValue, context, note: note || 'Registro via chat' } },
+          { type: 'save_insulin', data: { correction: insulinValue, meal: 0, total: insulinValue, glucoseValue, note: note || 'Correção via chat' } },
+        ],
       }
     }
     // SE tiver só glicose -> registrar glicose
     else if (glucoseValue) {
       const note = text.replace(/glicose|ao acordar|jejum|\d+/gi, '').trim().substring(0, 50)
-      console.log('Saving GLUCOSE ONLY - Value:', glucoseValue, 'Context:', context, 'Note:', note)
-
-      saveGlucose({
-        value: glucoseValue,
-        timestamp: new Date().toISOString(),
-        context: context as any,
-        note: note || 'Registro via chat',
-      })
-      console.log('Glucose saved successfully')
+      console.log('Detected GLUCOSE ONLY - Value:', glucoseValue, 'Context:', context)
 
       directResponse = {
         response: `✅ Glicose registrada: ${glucoseValue} mg/dL (${context}). ${glucoseValue > 180 ? '⚠️ Está acima do alvo!' : glucoseValue < 70 ? '⚠️ Está baixo!' : '✓ No alvo!'}`,
-        actions: []
+        actions: [
+          { type: 'save_glucose', data: { value: glucoseValue, context, note: note || 'Registro via chat' } },
+        ],
       }
     }
     // SE tiver só insulina -> registrar insulina
     else if (insulinValue) {
       const note = text.replace(/unidade|insulina|\d+/gi, '').trim().substring(0, 50)
-      console.log('Saving INSULIN ONLY - Value:', insulinValue, 'Note:', note)
-
-      saveInsulin({
-        correction: insulinValue,
-        meal: 0,
-        total: insulinValue,
-        timestamp: new Date().toISOString(),
-        note: note || 'Registro via chat',
-      })
-      console.log('Insulin saved successfully')
+      console.log('Detected INSULIN ONLY - Value:', insulinValue)
 
       directResponse = {
         response: `✅ Insulina registrada: ${insulinValue}U.`,
-        actions: []
+        actions: [
+          { type: 'save_insulin', data: { correction: insulinValue, meal: 0, total: insulinValue, note: note || 'Registro via chat' } },
+        ],
       }
     }
     // Detectar carboidratos/comida
@@ -144,21 +116,14 @@ export async function POST(request: NextRequest) {
     console.log('Carbs match result:', carbsMatch)
     if (carbsMatch && !directResponse) {
       const carbs = parseInt(carbsMatch[1])
-      console.log('Saving CARBS - Value:', carbs)
+      console.log('Detected CARBS - Value:', carbs)
       const mealDose = Math.round((carbs / settings.carbRatio) * 10) / 10
-
-      saveFood({
-        items: [{ name: 'Refeição', carbs }],
-        totalCarbs: carbs,
-        timestamp: new Date().toISOString(),
-        mealType: 'lunch',
-        note: text.substring(0, 50),
-      })
-      console.log('Food saved successfully')
 
       directResponse = {
         response: `✅ Carboidratos registrados: ${carbs}g. Dose sugerida: ${mealDose}U de insulina.`,
-        actions: []
+        actions: [
+          { type: 'save_food', data: { items: [{ name: 'Refeição', carbs }], totalCarbs: carbs, mealType: 'lunch', note: text.substring(0, 50) } },
+        ],
       }
     }
 
