@@ -40,7 +40,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       >
         {navItems.map((item) => {
           const isActive = pathname === item.href
-          const IconComponent = typeof item.icon === 'string' ? null : item.icon
+          const IconComponent = item.icon
           return (
             <Link
               key={item.href}
@@ -62,26 +62,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 minWidth: '56px',
               }}
             >
-              {IconComponent ? (
-                <IconComponent
-                  size={20}
-                  style={{
-                    filter: isActive ? 'drop-shadow(0 0 8px var(--color-primary-glow))' : 'none',
-                    transition: 'all var(--transition-base)',
-                  }}
-                />
-              ) : (
-                <span
-                  style={{
-                    fontSize: '18px',
-                    lineHeight: 1,
-                    filter: isActive ? 'drop-shadow(0 0 8px var(--color-primary-glow))' : 'none',
-                    transition: 'all var(--transition-base)',
-                  }}
-                >
-                  {item.icon}
-                </span>
-              )}
+              <IconComponent
+                size={20}
+                style={{
+                  filter: isActive ? 'drop-shadow(0 0 8px var(--color-primary-glow))' : 'none',
+                  transition: 'all var(--transition-base)',
+                }}
+              />
               {item.label}
             </Link>
           )
