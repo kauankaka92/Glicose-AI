@@ -205,7 +205,7 @@ Assistant: "Para 200 mg/dL: (200 - ${settings.targetGlucose}) / ${settings.corre
         success: true,
         data: {
           response: fallbackResponse,
-          actions: directResponse?.actions || [],
+          actions: [] as ChatAction[],
           timestamp: new Date().toISOString(),
         },
       })
