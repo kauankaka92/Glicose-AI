@@ -47,6 +47,7 @@ export interface InsulinEntry {
   total: number
   timestamp: string
   glucoseValue?: number
+  carbsValue?: number
   note?: string
 }
 
@@ -124,6 +125,7 @@ export interface ChatAction {
   type: 'save_glucose' | 'save_insulin' | 'save_food' | 'save_note' | 'read_data' | 'none'
   data?: Record<string, any>
   confirmed?: boolean
+  label?: string
 }
 
 export interface ChatMessage {

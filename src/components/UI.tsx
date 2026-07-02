@@ -5,30 +5,50 @@ interface CardProps {
   title?: string
   className?: string
   style?: React.CSSProperties
+  interactive?: boolean
+  glow?: 'primary' | 'accent' | 'none'
 }
 
-export function Card({ children, title, className = '', style }: CardProps) {
+export function Card({ children, title, className = '', style, interactive = false, glow = 'none' }: CardProps) {
+  const glowStyle = glow === 'primary'
+    ? { boxShadow: 'var(--shadow-glow-primary)' }
+    : glow === 'accent'
+    ? { boxShadow: 'var(--shadow-glow-accent)' }
+    : {}
+
   return (
     <div
       className={className}
       style={{
-        backgroundColor: 'var(--color-bg)',
+        backgroundColor: 'var(--color-bg-elevated)',
         borderRadius: 'var(--radius-xl)',
         padding: 'var(--spacing-xl)',
         boxShadow: 'var(--shadow-sm)',
-        border: '1px solid var(--color-border)',
+        border: `1px solid var(--color-border-subtle)`,
         transition: 'all var(--transition-base)',
+        position: 'relative',
+        overflow: 'hidden',
+        ...(interactive ? {
+          cursor: 'pointer',
+          ':hover': {
+            boxShadow: 'var(--shadow-md)',
+            transform: 'translateY(-2px)',
+          }
+        } : {}),
+        ...glowStyle,
         ...style,
       }}
     >
       {title && (
         <h3
           style={{
-            fontSize: '1rem',
+            fontSize: 'var(--font-size-xs)',
             fontWeight: 600,
             marginBottom: 'var(--spacing-lg)',
-            color: 'var(--color-text)',
-            letterSpacing: '-0.01em',
+            color: 'var(--color-text-secondary)',
+            letterSpacing: 'var(--letter-spacing-wide)',
+            textTransform: 'uppercase',
+            opacity: 0.8,
           }}
         >
           {title}
@@ -58,111 +78,132 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost'
   size?: 'sm' | 'md' | 'lg'
   children: React.ReactNode
+  fullWidth?: boolean
+  loading?: boolean
+  glow?: boolean
 }
 
-export function Button({ variant = 'primary', size = 'md', children, style, ...props }: ButtonProps) {
-  const baseStyle: React.CSSProperties = {
+export function Button({
+  variant = 'primary',
+  size = 'md',
+  children,
+  fullWidth = false,
+  loading = false,
+  glow = false,
+  style,
+  className = '',
+  disabled,
+  ...props
+}: ButtonProps) {
+  const baseStyles: React.CSSProperties = {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 'var(--spacing-sm)',
+    gap: '8px',
+    fontWeight: 600,
     borderRadius: 'var(--radius-md)',
-    fontWeight: 500,
-    transition: 'all var(--transition-fast)',
-    border: 'none',
-    cursor: 'pointer',
+    transition: 'all var(--transition-base)',
+    cursor: disabled || loading ? 'not-allowed' : 'pointer',
+    opacity: disabled || loading ? 0.6 : 1,
     letterSpacing: '-0.01em',
+    position: 'relative',
+    overflow: 'hidden',
   }
 
-  const variants: Record<string, React.CSSProperties> = {
+  const variantStyles: Record<string, React.CSSProperties> = {
     primary: {
       backgroundColor: 'var(--color-primary)',
-      color: '#fff',
-      boxShadow: 'var(--shadow-sm)',
+      color: 'var(--color-text-inverse)',
+      boxShadow: glow ? 'var(--shadow-glow-primary)' : 'none',
     },
     secondary: {
       backgroundColor: 'var(--color-bg-secondary)',
-      color: 'var(--color-text)',
-      border: '1px solid var(--color-border)',
+      color: 'var(--color-text-primary)',
+      border: `1px solid var(--color-border)`,
     },
     danger: {
       backgroundColor: 'var(--color-danger)',
       color: '#fff',
-      boxShadow: 'var(--shadow-sm)',
+      boxShadow: glow ? 'var(--shadow-glow-danger)' : 'none',
     },
     ghost: {
       backgroundColor: 'transparent',
       color: 'var(--color-text-secondary)',
+      border: `1px solid transparent`,
     },
   }
 
-  const sizes: Record<string, React.CSSProperties> = {
+  const sizeStyles: Record<string, React.CSSProperties> = {
     sm: {
-      padding: '6px 12px',
-      fontSize: '0.8125rem',
-      height: '32px',
+      padding: '8px 14px',
+      fontSize: 'var(--font-size-sm)',
     },
     md: {
-      padding: '10px 16px',
-      fontSize: '0.9375rem',
-      height: '40px',
+      padding: '10px 20px',
+      fontSize: 'var(--font-size-base)',
     },
     lg: {
-      padding: '14px 24px',
-      fontSize: '1rem',
-      height: '48px',
+      padding: '14px 28px',
+      fontSize: 'var(--font-size-lg)',
     },
   }
+
+  const variantStyle = variantStyles[variant]
+  const sizeStyle = sizeStyles[size]
 
   return (
     <button
+      className={className}
       style={{
-        ...baseStyle,
-        ...variants[variant],
-        ...sizes[size],
+        ...baseStyles,
+        ...variantStyle,
+        ...sizeStyle,
+        width: fullWidth ? '100%' : 'auto',
         ...style,
       }}
+      disabled={disabled || loading}
       {...props}
-      onMouseEnter={(e) => {
-        if (variant !== 'ghost' && !props.disabled) {
-          e.currentTarget.style.opacity = '0.9'
-          e.currentTarget.style.transform = 'translateY(-1px)'
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (variant !== 'ghost' && !props.disabled) {
-          e.currentTarget.style.opacity = '1'
-          e.currentTarget.style.transform = 'translateY(0)'
-        }
-      }}
     >
+      {loading && (
+        <span
+          style={{
+            display: 'inline-block',
+            width: '14px',
+            height: '14px',
+            border: '2px solid currentColor',
+            borderColor: 'transparent transparent currentColor currentColor',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite',
+          }}
+        />
+      )}
       {children}
     </button>
   )
 }
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement | HTMLTextAreaElement> {
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string
   error?: string
+  hint?: string
+  icon?: React.ReactNode
   multiline?: boolean
+  rows?: number
 }
 
-export function Input({ label, error, multiline, style, ...props }: InputProps) {
-  const baseStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '12px 16px',
-    borderRadius: 'var(--radius-md)',
-    border: '1px solid var(--color-border)',
-    backgroundColor: 'var(--color-bg)',
-    color: 'var(--color-text)',
-    transition: 'all var(--transition-fast)',
-    fontSize: '1rem',
-    letterSpacing: '-0.01em',
-  }
-
-  const errorStyle: React.CSSProperties = {
-    borderColor: 'var(--color-danger)',
-  }
+export function Input({
+  label,
+  error,
+  hint,
+  icon,
+  multiline,
+  rows = 3,
+  style,
+  className = '',
+  ...props
+}: InputProps) {
+  const { onChange: inputOnChange, onInput: inputOnInput, ...inputProps } = props
+  const { onChange: textareaOnChange, onInput: textareaOnInput, ...textareaProps } = props
 
   return (
     <div style={{ width: '100%' }}>
@@ -170,107 +211,557 @@ export function Input({ label, error, multiline, style, ...props }: InputProps) 
         <label
           style={{
             display: 'block',
-            marginBottom: 'var(--spacing-xs)',
-            fontSize: '0.8125rem',
+            fontSize: 'var(--font-size-sm)',
             fontWeight: 500,
             color: 'var(--color-text-secondary)',
+            marginBottom: '6px',
+            letterSpacing: '-0.01em',
           }}
         >
           {label}
         </label>
       )}
-      {multiline ? (
-        <textarea
-          style={{
-            ...baseStyle,
-            ...(error ? errorStyle : {}),
-            minHeight: '100px',
-            resize: 'vertical',
-            fontFamily: 'inherit',
-            ...style,
-          }}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = 'var(--color-primary)'
-            e.currentTarget.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = error ? 'var(--color-danger)' : 'var(--color-border)'
-            e.currentTarget.style.boxShadow = 'none'
-          }}
-          {...props}
-        />
-      ) : (
-        <input
-          style={{
-            ...baseStyle,
-            ...(error ? errorStyle : {}),
-            fontFamily: 'inherit',
-            ...style,
-          }}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = 'var(--color-primary)'
-            e.currentTarget.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = error ? 'var(--color-danger)' : 'var(--color-border)'
-            e.currentTarget.style.boxShadow = 'none'
-          }}
-          {...props}
-        />
-      )}
+      <div
+        style={{
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >
+        {icon && !multiline && (
+          <span
+            style={{
+              position: 'absolute',
+              left: '12px',
+              color: 'var(--color-text-tertiary)',
+              pointerEvents: 'none',
+            }}
+          >
+            {icon}
+          </span>
+        )}
+        {multiline ? (
+          <textarea
+            className={className}
+            rows={rows}
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              backgroundColor: 'var(--color-bg-secondary)',
+              border: `1px solid ${error ? 'var(--color-danger)' : 'var(--color-border)'}`,
+              borderRadius: 'var(--radius-md)',
+              color: 'var(--color-text-primary)',
+              transition: 'all var(--transition-fast)',
+              fontSize: 'var(--font-size-base)',
+              letterSpacing: 'var(--letter-spacing-base)',
+              outline: 'none',
+              resize: 'vertical',
+              fontFamily: 'inherit',
+              ...style,
+            }}
+            {...(textareaProps as React.TextareaHTMLAttributes<HTMLTextAreaElement>)}
+          />
+        ) : (
+          <input
+            className={className}
+            style={{
+              width: '100%',
+              padding: icon ? '12px 12px 12px 40px' : '12px 14px',
+              backgroundColor: 'var(--color-bg-secondary)',
+              border: `1px solid ${error ? 'var(--color-danger)' : 'var(--color-border)'}`,
+              borderRadius: 'var(--radius-md)',
+              color: 'var(--color-text-primary)',
+              transition: 'all var(--transition-fast)',
+              fontSize: 'var(--font-size-base)',
+              letterSpacing: 'var(--letter-spacing-base)',
+              outline: 'none',
+              ...style,
+            }}
+            {...(inputProps as React.InputHTMLAttributes<HTMLInputElement>)}
+          />
+        )}
+      </div>
       {error && (
         <p
           style={{
-            marginTop: 'var(--spacing-xs)',
-            fontSize: '0.75rem',
+            marginTop: '6px',
+            fontSize: 'var(--font-size-sm)',
             color: 'var(--color-danger)',
           }}
         >
           {error}
         </p>
       )}
+      {hint && !error && (
+        <p
+          style={{
+            marginTop: '6px',
+            fontSize: 'var(--font-size-sm)',
+            color: 'var(--color-text-tertiary)',
+          }}
+        >
+          {hint}
+        </p>
+      )}
+    </div>
+  )
+}
+
+interface BadgeProps {
+  children: React.ReactNode
+  variant?: 'success' | 'warning' | 'danger' | 'neutral' | 'primary'
+  size?: 'sm' | 'md'
+  glow?: boolean
+  style?: React.CSSProperties
+  className?: string
+}
+
+export function Badge({
+  children,
+  variant = 'neutral',
+  size = 'md',
+  glow = false,
+  style,
+  className = ''
+}: BadgeProps) {
+  const variantStyles: Record<string, React.CSSProperties> = {
+    success: {
+      backgroundColor: 'var(--color-success-light)',
+      color: 'var(--color-success)',
+      border: `1px solid rgba(0, 255, 157, 0.2)`,
+      boxShadow: glow ? 'var(--shadow-glow-success)' : 'none',
+    },
+    warning: {
+      backgroundColor: 'var(--color-warning-light)',
+      color: 'var(--color-warning)',
+      border: `1px solid rgba(255, 184, 107, 0.2)`,
+    },
+    danger: {
+      backgroundColor: 'var(--color-danger-light)',
+      color: 'var(--color-danger)',
+      border: `1px solid rgba(255, 107, 142, 0.2)`,
+    },
+    neutral: {
+      backgroundColor: 'var(--color-bg-secondary)',
+      color: 'var(--color-text-secondary)',
+      border: `1px solid var(--color-border)`,
+    },
+    primary: {
+      backgroundColor: 'var(--color-primary-light)',
+      color: 'var(--color-primary)',
+      border: `1px solid rgba(0, 255, 157, 0.3)`,
+    },
+  }
+
+  const sizeStyles: Record<string, React.CSSProperties> = {
+    sm: {
+      padding: '4px 8px',
+      fontSize: 'var(--font-size-xs)',
+    },
+    md: {
+      padding: '6px 10px',
+      fontSize: 'var(--font-size-sm)',
+    },
+  }
+
+  const variantStyle = variantStyles[variant]
+  const sizeStyle = sizeStyles[size]
+
+  return (
+    <span
+      className={className}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 'var(--radius-full)',
+        fontWeight: 600,
+        letterSpacing: '0.02em',
+        transition: 'all var(--transition-base)',
+        ...variantStyle,
+        ...sizeStyle,
+        ...style,
+      }}
+    >
+      {children}
+    </span>
+  )
+}
+
+interface StatProps {
+  value: string | number
+  label: string
+  trend?: 'up' | 'down' | 'neutral'
+  trendValue?: number
+  formatFn?: (value: string | number) => string | number
+}
+
+export function Stat({ value, label, trend, trendValue, formatFn }: StatProps) {
+  const formattedValue = formatFn ? formatFn(value) : value
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '4px',
+      }}
+    >
+      <div
+        style={{
+          fontSize: 'var(--font-size-3xl)',
+          fontWeight: 700,
+          color: 'var(--color-text-primary)',
+          letterSpacing: 'var(--letter-spacing-tight)',
+          fontFamily: 'var(--font-display)',
+        }}
+      >
+        {formattedValue}
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+        }}
+      >
+        <span
+          style={{
+            fontSize: 'var(--font-size-sm)',
+            color: 'var(--color-text-secondary)',
+            fontWeight: 500,
+          }}
+        >
+          {label}
+        </span>
+        {trend && trendValue !== undefined && (
+          <Badge
+            variant={trend === 'up' ? 'success' : trend === 'down' ? 'warning' : 'neutral'}
+            size="sm"
+          >
+            {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'} {Math.abs(trendValue)}%
+          </Badge>
+        )}
+      </div>
+    </div>
+  )
+}
+
+interface SectionProps {
+  title: string
+  children: React.ReactNode
+  action?: React.ReactNode
+  className?: string
+  style?: React.CSSProperties
+}
+
+export function Section({ title, children, action, className = '', style }: SectionProps) {
+  return (
+    <section
+      className={className}
+      style={{
+        marginBottom: 'var(--spacing-2xl)',
+        ...style,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 'var(--spacing-lg)',
+        }}
+      >
+        <h2
+          style={{
+            fontSize: 'var(--font-size-lg)',
+            fontWeight: 700,
+            color: 'var(--color-text-primary)',
+            letterSpacing: 'var(--letter-spacing-tight)',
+            fontFamily: 'var(--font-display)',
+          }}
+        >
+          {title}
+        </h2>
+        {action && <div>{action}</div>}
+      </div>
+      {children}
+    </section>
+  )
+}
+
+interface EmptyStateProps {
+  icon?: string
+  title: string
+  description?: string
+  action?: React.ReactNode
+}
+
+export function EmptyState({ icon = '◦', title, description, action }: EmptyStateProps) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 'var(--spacing-4xl)',
+        textAlign: 'center',
+        color: 'var(--color-text-secondary)',
+      }}
+    >
+      <div
+        style={{
+          fontSize: '48px',
+          marginBottom: 'var(--spacing-lg)',
+          opacity: 0.3,
+        }}
+      >
+        {icon}
+      </div>
+      <h3
+        style={{
+          fontSize: 'var(--font-size-lg)',
+          fontWeight: 600,
+          color: 'var(--color-text-primary)',
+          marginBottom: 'var(--spacing-sm)',
+        }}
+      >
+        {title}
+      </h3>
+      {description && (
+        <p
+          style={{
+            fontSize: 'var(--font-size-sm)',
+            color: 'var(--color-text-secondary)',
+            marginBottom: 'var(--spacing-lg)',
+            maxWidth: '300px',
+          }}
+        >
+          {description}
+        </p>
+      )}
+      {action && <div>{action}</div>}
+    </div>
+  )
+}
+
+interface ProgressBarProps {
+  value: number
+  max?: number
+  variant?: 'primary' | 'success' | 'warning' | 'danger'
+  showLabel?: boolean
+  label?: string
+}
+
+export function ProgressBar({
+  value,
+  max = 100,
+  variant = 'primary',
+  showLabel = false,
+  label
+}: ProgressBarProps) {
+  const percentage = Math.min(100, Math.max(0, (value / max) * 100))
+
+  const colorMap: Record<string, string> = {
+    primary: 'var(--color-primary)',
+    success: 'var(--color-success)',
+    warning: 'var(--color-warning)',
+    danger: 'var(--color-danger)',
+  }
+
+  return (
+    <div style={{ width: '100%' }}>
+      {(showLabel || label) && (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '8px',
+          }}
+        >
+          {label && (
+            <span
+              style={{
+                fontSize: 'var(--font-size-sm)',
+                color: 'var(--color-text-secondary)',
+                fontWeight: 500,
+              }}
+            >
+              {label}
+            </span>
+          )}
+          {showLabel && (
+            <span
+              style={{
+                fontSize: 'var(--font-size-sm)',
+                color: 'var(--color-text-secondary)',
+                fontFamily: 'var(--font-mono)',
+              }}
+            >
+              {Math.round(percentage)}%
+            </span>
+          )}
+        </div>
+      )}
+      <div
+        style={{
+          width: '100%',
+          height: '8px',
+          backgroundColor: 'var(--color-bg-secondary)',
+          borderRadius: 'var(--radius-full)',
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            width: `${percentage}%`,
+            height: '100%',
+            backgroundColor: colorMap[variant],
+            borderRadius: 'var(--radius-full)',
+            transition: 'width var(--transition-slow)',
+            boxShadow: `0 0 12px ${colorMap[variant]}40`,
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
+interface DividerProps {
+  variant?: 'solid' | 'dashed' | 'dotted'
+  orientation?: 'horizontal' | 'vertical'
+  style?: React.CSSProperties
+}
+
+export function Divider({ variant = 'solid', orientation = 'horizontal', style }: DividerProps) {
+  const borderStyle = variant === 'dashed' ? 'dashed' : variant === 'dotted' ? 'dotted' : 'solid'
+
+  return (
+    <div
+      style={{
+        border: 'none',
+        borderTop: orientation === 'horizontal' ? `1px ${borderStyle} var(--color-border)` : 'none',
+        borderLeft: orientation === 'vertical' ? `1px ${borderStyle} var(--color-border)` : 'none',
+        height: orientation === 'horizontal' ? '1px' : 'auto',
+        width: orientation === 'vertical' ? '1px' : 'auto',
+        minHeight: orientation === 'vertical' ? '100%' : 'auto',
+        ...style,
+      }}
+    />
+  )
+}
+
+interface ContainerProps {
+  children: React.ReactNode
+  maxWidth?: string
+  className?: string
+  style?: React.CSSProperties
+}
+
+export function Container({ children, maxWidth = '1200px', className = '', style }: ContainerProps) {
+  return (
+    <div
+      className={className}
+      style={{
+        width: '100%',
+        maxWidth,
+        margin: '0 auto',
+        ...style,
+      }}
+    >
+      {children}
     </div>
   )
 }
 
 interface AlertProps {
-  type: 'info' | 'success' | 'warning' | 'danger'
-  children: React.ReactNode
+  type: 'success' | 'warning' | 'danger' | 'info'
+  title?: string
+  message?: string
   onClose?: () => void
+  children?: React.ReactNode
+  style?: React.CSSProperties
 }
 
-export function Alert({ type, children, onClose }: AlertProps) {
-  const colors: Record<string, { bg: string; border: string; text: string }> = {
-    info: { bg: 'var(--color-primary-light)', border: 'rgba(0, 122, 255, 0.2)', text: 'var(--color-primary)' },
-    success: { bg: 'var(--color-success-light)', border: 'rgba(52, 199, 89, 0.2)', text: 'var(--color-success)' },
-    warning: { bg: 'var(--color-warning-light)', border: 'rgba(255, 149, 0, 0.2)', text: 'var(--color-warning)' },
-    danger: { bg: 'var(--color-danger-light)', border: 'rgba(255, 59, 48, 0.2)', text: 'var(--color-danger)' },
+export function Alert({ type, title, message, onClose, children, style }: AlertProps) {
+  const typeStyles: Record<string, React.CSSProperties> = {
+    success: {
+      backgroundColor: 'var(--color-success-light)',
+      border: '1px solid rgba(0, 255, 157, 0.2)',
+      color: 'var(--color-success)',
+    },
+    warning: {
+      backgroundColor: 'var(--color-warning-light)',
+      border: '1px solid rgba(255, 184, 107, 0.2)',
+      color: 'var(--color-warning)',
+    },
+    danger: {
+      backgroundColor: 'var(--color-danger-light)',
+      border: '1px solid rgba(255, 107, 142, 0.2)',
+      color: 'var(--color-danger)',
+    },
+    info: {
+      backgroundColor: 'var(--color-primary-light)',
+      border: '1px solid rgba(0, 255, 157, 0.2)',
+      color: 'var(--color-primary)',
+    },
   }
 
   const icons: Record<string, string> = {
-    info: 'ℹ️',
-    success: '✅',
-    warning: '⚠️',
-    danger: '❌',
+    success: '✓',
+    warning: '⚠',
+    danger: '✕',
+    info: 'ℹ',
   }
 
-  const color = colors[type]
+  const content = children || message
 
   return (
     <div
       style={{
         display: 'flex',
         alignItems: 'flex-start',
-        gap: 'var(--spacing-sm)',
-        padding: 'var(--spacing-md) var(--spacing-lg)',
+        gap: 'var(--spacing-md)',
+        padding: 'var(--spacing-lg)',
         borderRadius: 'var(--radius-md)',
-        backgroundColor: color.bg,
-        border: `1px solid ${color.border}`,
-        color: 'var(--color-text)',
+        ...typeStyles[type],
+        ...style,
       }}
     >
-      <span style={{ fontSize: '1.125rem' }}>{icons[type]}</span>
-      <div style={{ flex: 1, fontSize: '0.9375rem' }}>{children}</div>
+      <span
+        style={{
+          fontSize: '18px',
+          lineHeight: 1,
+          marginTop: '2px',
+        }}
+      >
+        {icons[type]}
+      </span>
+      <div style={{ flex: 1 }}>
+        {title && (
+          <p
+            style={{
+              fontSize: 'var(--font-size-sm)',
+              fontWeight: 600,
+              marginBottom: '4px',
+            }}
+          >
+            {title}
+          </p>
+        )}
+        {content && (
+          <p
+            style={{
+              fontSize: 'var(--font-size-base)',
+              lineHeight: 'var(--line-height-base)',
+            }}
+          >
+            {content}
+          </p>
+        )}
+      </div>
       {onClose && (
         <button
           onClick={onClose}
@@ -278,9 +769,10 @@ export function Alert({ type, children, onClose }: AlertProps) {
             background: 'none',
             border: 'none',
             cursor: 'pointer',
-            color: 'var(--color-text-secondary)',
-            fontSize: '1.25rem',
-            padding: 0,
+            color: 'currentColor',
+            opacity: 0.6,
+            padding: '4px',
+            fontSize: '18px',
             lineHeight: 1,
           }}
         >
@@ -291,45 +783,75 @@ export function Alert({ type, children, onClose }: AlertProps) {
   )
 }
 
-interface BadgeProps {
-  children: React.ReactNode
-  color?: 'default' | 'primary' | 'success' | 'warning' | 'danger'
-  size?: 'sm' | 'md'
+interface ToggleProps {
+  checked: boolean
+  onChange: (checked: boolean) => void
+  label?: string
+  description?: string
 }
 
-export function Badge({ children, color = 'default', size = 'md' }: BadgeProps) {
-  const colors: Record<string, string> = {
-    default: 'var(--color-bg-secondary)',
-    primary: 'var(--color-primary)',
-    success: 'var(--color-success)',
-    warning: 'var(--color-warning)',
-    danger: 'var(--color-danger)',
-  }
-
-  const textColors: Record<string, string> = {
-    default: 'var(--color-text)',
-    primary: '#fff',
-    success: '#fff',
-    warning: '#fff',
-    danger: '#fff',
-  }
-
+export function Toggle({ checked, onChange, label, description }: ToggleProps) {
   return (
-    <span
+    <label
       style={{
-        display: 'inline-flex',
+        display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
-        padding: size === 'sm' ? '4px 8px' : '6px 12px',
-        borderRadius: 'var(--radius-full)',
-        backgroundColor: colors[color],
-        color: textColors[color],
-        fontSize: size === 'sm' ? '0.6875rem' : '0.8125rem',
-        fontWeight: 600,
-        letterSpacing: '-0.01em',
+        gap: 'var(--spacing-md)',
+        cursor: 'pointer',
       }}
     >
-      {children}
-    </span>
+      <div
+        style={{
+          position: 'relative',
+          width: '44px',
+          height: '24px',
+          backgroundColor: checked ? 'var(--color-primary)' : 'var(--color-bg-tertiary)',
+          borderRadius: 'var(--radius-full)',
+          transition: 'background-color var(--transition-base)',
+          flexShrink: 0,
+        }}
+        onClick={() => onChange(!checked)}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            top: '2px',
+            left: checked ? '22px' : '2px',
+            width: '20px',
+            height: '20px',
+            backgroundColor: '#fff',
+            borderRadius: '50%',
+            transition: 'left var(--transition-base)',
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+          }}
+        />
+      </div>
+      {(label || description) && (
+        <div style={{ flex: 1 }}>
+          {label && (
+            <span
+              style={{
+                fontSize: 'var(--font-size-base)',
+                fontWeight: 500,
+                color: 'var(--color-text-primary)',
+              }}
+            >
+              {label}
+            </span>
+          )}
+          {description && (
+            <p
+              style={{
+                fontSize: 'var(--font-size-sm)',
+                color: 'var(--color-text-secondary)',
+                margin: 0,
+              }}
+            >
+              {description}
+            </p>
+          )}
+        </div>
+      )}
+    </label>
   )
 }

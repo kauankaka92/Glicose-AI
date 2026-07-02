@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, Button, Input, Alert } from '@/components/UI'
+import { Card, Button, Input, Alert, Badge } from '@/components/UI'
 import { saveFood, getFoodEntries, deleteFoodEntry } from '@/lib/storage'
 import { FoodEntry, MealType } from '@/lib/types'
 import { searchFood } from '@/lib/ai-engine'
@@ -140,30 +140,56 @@ export default function FoodPage() {
   }
 
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-      <h1
+    <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+      {/* Header */}
+      <div
         style={{
-          fontSize: '2rem',
-          fontWeight: 700,
-          marginBottom: 'var(--spacing-xl)',
+          marginBottom: 'var(--spacing-2xl)',
           textAlign: 'center',
         }}
       >
-        Alimentação
-      </h1>
+        <h1
+          style={{
+            fontSize: 'var(--font-size-3xl)',
+            fontWeight: 700,
+            color: 'var(--color-text-primary)',
+            fontFamily: 'var(--font-display)',
+            letterSpacing: 'var(--letter-spacing-tight)',
+            marginBottom: 'var(--spacing-sm)',
+          }}
+        >
+          Alimentação
+        </h1>
+        <p
+          style={{
+            fontSize: 'var(--font-size-sm)',
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          Registre suas refeições e carboidratos
+        </p>
+      </div>
 
       {alert && <Alert type={alert.type} onClose={() => setAlert(null)}>{alert.message}</Alert>}
 
-      <Card style={{ marginBottom: 'var(--spacing-lg)' }}>
+      {/* Form Card */}
+      <Card
+        style={{
+          marginBottom: 'var(--spacing-2xl)',
+          background: 'linear-gradient(180deg, var(--color-bg-elevated) 0%, var(--color-bg-secondary) 100%)',
+        }}
+      >
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: 'var(--spacing-md)' }}>
+          <div style={{ marginBottom: 'var(--spacing-xl)' }}>
             <label
               style={{
                 display: 'block',
-                marginBottom: 'var(--spacing-xs)',
-                fontSize: '0.875rem',
+                marginBottom: 'var(--spacing-sm)',
+                fontSize: 'var(--font-size-sm)',
                 fontWeight: 500,
                 color: 'var(--color-text-secondary)',
+                letterSpacing: 'var(--letter-spacing-wide)',
+                textTransform: 'uppercase',
               }}
             >
               Tipo de refeição
@@ -173,12 +199,22 @@ export default function FoodPage() {
               onChange={(e) => setMealType(e.target.value as MealType)}
               style={{
                 width: '100%',
-                padding: 'var(--spacing-sm) var(--spacing-md)',
+                padding: '12px 14px',
                 borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--color-border)',
-                backgroundColor: 'var(--color-bg)',
-                color: 'var(--color-text)',
-                fontSize: '1rem',
+                border: `1px solid var(--color-border)`,
+                backgroundColor: 'var(--color-bg-secondary)',
+                color: 'var(--color-text-primary)',
+                fontSize: 'var(--font-size-base)',
+                outline: 'none',
+                transition: 'all var(--transition-fast)',
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = 'var(--color-primary)'
+                e.target.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'var(--color-border)'
+                e.target.style.boxShadow = 'none'
               }}
             >
               {mealTypeOptions.map((opt) => (
@@ -189,14 +225,16 @@ export default function FoodPage() {
             </select>
           </div>
 
-          <div style={{ marginBottom: 'var(--spacing-md)' }}>
+          <div style={{ marginBottom: 'var(--spacing-xl)' }}>
             <label
               style={{
                 display: 'block',
-                marginBottom: 'var(--spacing-xs)',
-                fontSize: '0.875rem',
+                marginBottom: 'var(--spacing-sm)',
+                fontSize: 'var(--font-size-sm)',
                 fontWeight: 500,
                 color: 'var(--color-text-secondary)',
+                letterSpacing: 'var(--letter-spacing-wide)',
+                textTransform: 'uppercase',
               }}
             >
               Alimentos
@@ -217,11 +255,11 @@ export default function FoodPage() {
                         top: '100%',
                         left: 0,
                         right: 0,
-                        backgroundColor: 'var(--color-bg)',
+                        backgroundColor: 'var(--color-bg-elevated)',
                         border: '1px solid var(--color-border)',
                         borderRadius: 'var(--radius-md)',
-                        boxShadow: 'var(--shadow-lg)',
-                        zIndex: 10,
+                        boxShadow: 'var(--shadow-xl)',
+                        zIndex: 100,
                         maxHeight: '200px',
                         overflow: 'auto',
                       }}
@@ -229,17 +267,18 @@ export default function FoodPage() {
                       {searchResults.map((result, i) => (
                         <div
                           key={i}
-                          onClick={() => selectItem(index, result)}
+                          onClick={() => selectFood(index, result)}
                           style={{
-                            padding: 'var(--spacing-sm) var(--spacing-md)',
+                            padding: 'var(--spacing-md)',
                             cursor: 'pointer',
                             borderBottom: i < searchResults.length - 1 ? '1px solid var(--color-border)' : 'none',
+                            transition: 'background-color var(--transition-fast)',
                           }}
                           onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-bg-secondary)')}
-                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-bg)')}
+                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                         >
-                          <div style={{ fontWeight: 500 }}>{result.name}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                          <div style={{ fontWeight: 500, color: 'var(--color-text-primary)' }}>{result.name}</div>
+                          <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)' }}>
                             {result.carbs}g de carboidratos
                           </div>
                         </div>
@@ -264,21 +303,22 @@ export default function FoodPage() {
                   />
                 </div>
                 {items.length > 1 && (
-                  <Button
+                  <button
                     type="button"
-                    variant="secondary"
-                    size="sm"
                     onClick={() => removeItem(index)}
                     style={{
                       background: 'none',
                       border: 'none',
+                      cursor: 'pointer',
                       color: 'var(--color-text-secondary)',
-                      fontSize: '1.25rem',
+                      fontSize: '20px',
                       padding: 'var(--spacing-sm)',
+                      opacity: 0.6,
+                      transition: 'all var(--transition-fast)',
                     }}
                   >
                     ×
-                  </Button>
+                  </button>
                 )}
               </div>
             ))}
@@ -288,22 +328,44 @@ export default function FoodPage() {
             </Button>
           </div>
 
+          {/* Total Display */}
           <div
             style={{
-              padding: 'var(--spacing-md)',
+              padding: 'var(--spacing-lg)',
               backgroundColor: 'var(--color-bg-secondary)',
-              borderRadius: 'var(--radius-md)',
-              marginBottom: 'var(--spacing-md)',
+              borderRadius: 'var(--radius-lg)',
+              marginBottom: 'var(--spacing-xl)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
+              border: '1px solid var(--color-border)',
             }}
           >
-            <span style={{ fontWeight: 500 }}>Total de carboidratos</span>
-            <span style={{ fontSize: '1.25rem', fontWeight: 700 }}>{calculateTotalCarbs()}g</span>
+            <span
+              style={{
+                fontWeight: 500,
+                color: 'var(--color-text-secondary)',
+                fontSize: 'var(--font-size-sm)',
+                letterSpacing: 'var(--letter-spacing-wide)',
+                textTransform: 'uppercase',
+              }}
+            >
+              Total de carboidratos
+            </span>
+            <span
+              style={{
+                fontSize: 'var(--font-size-2xl)',
+                fontWeight: 700,
+                color: 'var(--color-primary)',
+                fontFamily: 'var(--font-display)',
+                textShadow: 'var(--shadow-glow-primary)',
+              }}
+            >
+              {calculateTotalCarbs()}g
+            </span>
           </div>
 
-          <div style={{ marginBottom: 'var(--spacing-md)' }}>
+          <div style={{ marginBottom: 'var(--spacing-xl)' }}>
             <Input
               label="Observação (opcional)"
               value={note}
@@ -313,50 +375,105 @@ export default function FoodPage() {
             />
           </div>
 
-          <Button type="submit" style={{ width: '100%' }}>
+          <Button type="submit" variant="primary" glow style={{ width: '100%' }}>
             Registrar Refeição
           </Button>
         </form>
       </Card>
 
-      <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}>
+      {/* History */}
+      <h2
+        style={{
+          fontSize: 'var(--font-size-lg)',
+          fontWeight: 700,
+          color: 'var(--color-text-primary)',
+          fontFamily: 'var(--font-display)',
+          marginBottom: 'var(--spacing-lg)',
+          letterSpacing: 'var(--letter-spacing-tight)',
+        }}
+      >
         Histórico
       </h2>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
         {entries.map((entry) => (
-          <Card key={entry.id} style={{ padding: 'var(--spacing-md)' }}>
+          <Card key={entry.id} style={{ padding: 'var(--spacing-lg)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 'var(--spacing-xs)' }}>
-                  {mealTypeOptions.find((m) => m.value === entry.mealType)?.label} • {formatDateTime(entry.timestamp)}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--spacing-sm)',
+                    marginBottom: 'var(--spacing-sm)',
+                  }}
+                >
+                  <Badge variant="neutral" size="sm">
+                    {mealTypeOptions.find((m) => m.value === entry.mealType)?.label}
+                  </Badge>
+                  <span
+                    style={{
+                      fontSize: 'var(--font-size-xs)',
+                      color: 'var(--color-text-tertiary)',
+                    }}
+                  >
+                    {formatDateTime(entry.timestamp)}
+                  </span>
                 </div>
-                <div style={{ fontWeight: 600, marginBottom: 'var(--spacing-xs)' }}>
+                <div
+                  style={{
+                    fontWeight: 600,
+                    color: 'var(--color-text-primary)',
+                    marginBottom: 'var(--spacing-sm)',
+                  }}
+                >
                   {entry.items.map((i) => i.name).join(', ')}
                 </div>
-                <div style={{ fontSize: '0.875rem' }}>
-                  <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{entry.totalCarbs}g</span> de carboidratos
+                <div
+                  style={{
+                    fontSize: 'var(--font-size-base)',
+                    color: 'var(--color-text-secondary)',
+                  }}
+                >
+                  <span
+                    style={{
+                      color: 'var(--color-primary)',
+                      fontWeight: 600,
+                      fontFamily: 'var(--font-display)',
+                      fontSize: 'var(--font-size-lg)',
+                    }}
+                  >
+                    {entry.totalCarbs}g
+                  </span>{' '}
+                  de carboidratos
                 </div>
                 {entry.note && (
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: 'var(--spacing-xs)' }}>
+                  <div
+                    style={{
+                      fontSize: 'var(--font-size-xs)',
+                      color: 'var(--color-text-tertiary)',
+                      marginTop: 'var(--spacing-sm)',
+                    }}
+                  >
                     {entry.note}
                   </div>
                 )}
               </div>
-              <Button
-                variant="secondary"
-                size="sm"
+              <button
                 onClick={() => handleDelete(entry.id)}
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: 'var(--color-text-secondary)',
-                  fontSize: '1.25rem',
+                  cursor: 'pointer',
+                  color: 'var(--color-text-tertiary)',
+                  fontSize: '20px',
                   padding: 'var(--spacing-xs)',
+                  opacity: 0.6,
+                  transition: 'all var(--transition-fast)',
                 }}
               >
                 ×
-              </Button>
+              </button>
             </div>
           </Card>
         ))}
@@ -365,19 +482,29 @@ export default function FoodPage() {
           <div
             style={{
               textAlign: 'center',
-              padding: 'var(--spacing-xl)',
+              padding: 'var(--spacing-3xl)',
               color: 'var(--color-text-secondary)',
             }}
           >
-            Nenhum registro ainda. Adicione sua primeira refeição acima.
+            <div
+              style={{
+                fontSize: '48px',
+                marginBottom: 'var(--spacing-lg)',
+                opacity: 0.2,
+              }}
+            >
+              ◎
+            </div>
+            <p
+              style={{
+                fontSize: 'var(--font-size-base)',
+              }}
+            >
+              Nenhum registro de refeições.
+            </p>
           </div>
         )}
       </div>
     </div>
   )
-}
-
-function selectItem(index: number, result: { name: string; carbs: number }) {
-  const event = new CustomEvent('select-food', { detail: { index, result } })
-  window.dispatchEvent(event)
 }

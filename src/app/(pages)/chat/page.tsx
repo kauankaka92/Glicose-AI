@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Card, Button, Input } from '@/components/UI'
+import { Card, Button, Input, Badge } from '@/components/UI'
 import { ChatAction, ChatMessage as ChatMessageType } from '@/lib/types'
 import {
   getCurrentConversation,
@@ -66,18 +66,27 @@ export default function Chat() {
 
   const switchConversation = (id: string) => {
     setCurrentId(id)
-    setCurrentConversationId(id)
-    const conv = conversations.find(c => c.id === id)
-    if (conv) {
-      setMessages(conv.messages as Message[])
+    const conversation = getConversations().find((c) => c.id === id)
+    if (conversation) {
+      setMessages(conversation.messages as Message[])
     }
     setShowSidebar(false)
   }
 
   const handleDeleteConversation = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    deleteConversation(id)
-    loadConversations()
+    if (conversations.length === 1) {
+      startNewConversation()
+    } else {
+      deleteConversation(id)
+      loadConversations()
+      if (id === currentConversationId) {
+        const remaining = conversations.filter((c) => c.id !== id)
+        if (remaining.length > 0) {
+          switchConversation(remaining[0].id)
+        }
+      }
+    }
   }
 
   const sendMessage = async () => {
@@ -90,463 +99,356 @@ export default function Chat() {
       timestamp: new Date().toISOString(),
     }
 
-    setMessages(prev => [...prev, userMessage])
+    setMessages((prev) => [...prev, userMessage])
     setInput('')
     setLoading(true)
 
-    if (!currentConversationId) {
-      const conversation = createConversation(input.trim().substring(0, 30))
-      setCurrentId(conversation.id)
-      await addMessage(conversation.id, {
-        role: 'user',
-        content: userMessage.content,
-        timestamp: userMessage.timestamp,
-      })
-    } else {
-      await addMessage(currentConversationId, {
-        role: 'user',
-        content: userMessage.content,
-        timestamp: userMessage.timestamp,
-      })
-    }
-
     try {
-      const conv = getCurrentConversation()
-      const messageHistory = conv?.messages || []
-
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [...messageHistory, userMessage].map(m => ({
-            role: m.role,
-            content: m.content,
-          })),
-        }),
+        body: JSON.stringify({ message: input.trim() }),
       })
 
       const data = await response.json()
 
-      if (data.success) {
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: data.data.response,
-          timestamp: data.data.timestamp,
-          actions: data.data.actions,
-        }
-
-        setMessages(prev => [...prev, assistantMessage])
-
-        if (currentConversationId) {
-          await addMessage(currentConversationId, {
-            role: 'assistant',
-            content: assistantMessage.content,
-            timestamp: assistantMessage.timestamp,
-            actions: assistantMessage.actions,
-          })
-        }
-      } else {
-        const errorMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: 'Desculpe, ocorreu um erro. Verifique sua conexão.',
-          timestamp: new Date().toISOString(),
-        }
-        setMessages(prev => [...prev, errorMessage])
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: data.response,
+        timestamp: new Date().toISOString(),
+        actions: data.actions,
       }
-    } catch {
+
+      setMessages((prev) => [...prev, assistantMessage])
+
+      if (currentConversationId) {
+        addMessage(currentConversationId, userMessage)
+        addMessage(currentConversationId, assistantMessage)
+      }
+    } catch (error) {
+      console.error('Erro ao enviar mensagem:', error)
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'Erro de conexão. Tente novamente.',
+        content: 'Desculpe, ocorreu um erro. Tente novamente.',
         timestamp: new Date().toISOString(),
       }
-      setMessages(prev => [...prev, errorMessage])
+      setMessages((prev) => [...prev, errorMessage])
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       sendMessage()
     }
   }
 
-  const handleExecuteAction = async (action: ChatAction, messageId: string) => {
-    if (!action.data || !action.type) return
-
-    let success = false
-    let message = ''
-
-    try {
-      switch (action.type) {
-        case 'save_glucose':
-          const glucoseRes = await fetch('/api/glucose', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              value: action.data.value,
-              timestamp: new Date().toISOString(),
-              context: action.data.context || 'other',
-              note: action.data.note,
-            }),
-          })
-          const glucoseData = await glucoseRes.json()
-          success = glucoseData.success
-          message = success ? `Glicose ${action.data.value} mg/dL registrada!` : 'Erro ao registrar glicose'
-          break
-
-        case 'save_insulin':
-          const insulinRes = await fetch('/api/insulin', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              correction: action.data.correction,
-              meal: action.data.meal || 0,
-              glucoseValue: action.data.glucoseValue,
-              timestamp: new Date().toISOString(),
-            }),
-          })
-          const insulinData = await insulinRes.json()
-          success = insulinData.success
-          message = success ? `Insulina ${action.data.correction}U registrada!` : 'Erro ao registrar insulina'
-          break
-
-        case 'save_food':
-          const foodRes = await fetch('/api/food', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              items: action.data.items,
-              mealType: action.data.mealType,
-              totalCarbs: action.data.items.reduce((sum: number, item: any) => sum + item.carbs, 0),
-              timestamp: new Date().toISOString(),
-            }),
-          })
-          const foodData = await foodRes.json()
-          success = foodData.success
-          message = success ? 'Alimento registrado!' : 'Erro ao registrar alimento'
-          break
-
-        case 'save_note':
-          message = 'Anotação salva: ' + action.data.content
-          success = true
-          break
-
-        default:
-          message = 'Ação não implementada'
-      }
-
-      const updatedMessages = messages.map(msg => {
-        if (msg.id === messageId && msg.actions) {
-          return {
-            ...msg,
-            actions: msg.actions.map(a =>
-              a === action ? { ...a, confirmed: true } : a
-            ),
-          }
-        }
-        return msg
-      })
-      setMessages(updatedMessages)
-
-      const assistantMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: message,
-        timestamp: new Date().toISOString(),
-      }
-      setMessages(prev => [...prev, assistantMsg])
-
-      if (currentConversationId) {
-        await addMessage(currentConversationId, {
-          role: 'assistant',
-          content: message,
-          timestamp: assistantMsg.timestamp,
-        })
-      }
-    } catch {
-      console.error('Failed to execute action')
-    }
+  const processAction = async (action: ChatAction) => {
+    console.log('Processing action:', action)
+    alert(`Ação: ${action.type}\nDados: ${JSON.stringify(action.data, null, 2)}`)
   }
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 140px)', gap: 'var(--spacing-md)' }}>
-      {/* Sidebar */}
+    <>
+      {/* Header */}
       <div
         style={{
-          position: 'fixed',
-          left: showSidebar ? 0 : '-280px',
-          top: 80,
-          width: '260px',
-          height: 'calc(100vh - 160px)',
-          backgroundColor: 'var(--color-bg)',
-          borderRadius: 'var(--radius-lg)',
-          padding: 'var(--spacing-md)',
-          transition: 'left 0.3s ease',
-          zIndex: 100,
-          overflowY: 'auto',
-          border: '1px solid var(--color-border)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 'var(--spacing-xl)',
+          paddingBottom: 'var(--spacing-lg)',
+          borderBottom: '1px solid var(--color-border)',
         }}
       >
-        <Button onClick={startNewConversation} size="sm" style={{ width: '100%', marginBottom: 'var(--spacing-md)' }}>
-          + Nova conversa
-        </Button>
-        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 'var(--spacing-sm)' }}>
-          CONVERSAS
-        </div>
-        {conversations.map(conv => (
-          <div
-            key={conv.id}
-            onClick={() => switchConversation(conv.id)}
+        <div>
+          <h1
             style={{
-              padding: 'var(--spacing-sm)',
-              borderRadius: 'var(--radius-md)',
-              cursor: 'pointer',
-              backgroundColor: conv.id === currentConversationId ? 'var(--color-bg-secondary)' : 'transparent',
-              marginBottom: 'var(--spacing-xs)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
+              fontSize: 'var(--font-size-2xl)',
+              fontWeight: 700,
+              color: 'var(--color-text-primary)',
+              fontFamily: 'var(--font-display)',
+              letterSpacing: 'var(--letter-spacing-tight)',
             }}
           >
-            <span style={{ fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {conv.title}
-            </span>
-            <button
-              onClick={e => handleDeleteConversation(conv.id, e)}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--color-text-secondary)',
-                fontSize: '1rem',
-              }}
-            >
-              ×
-            </button>
-          </div>
-        ))}
+            Chat IA
+          </h1>
+          <p
+            style={{
+              fontSize: 'var(--font-size-sm)',
+              color: 'var(--color-text-secondary)',
+              marginTop: 'var(--spacing-xs)',
+            }}
+          >
+            Cálculos e registros conversacionais
+          </p>
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={startNewConversation}
+          style={{
+            border: '1px solid var(--color-border)',
+          }}
+        >
+          + Nova
+        </Button>
       </div>
 
-      {/* Chat Area */}
-      <Card style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
-        {/* Header */}
-        <div
-          style={{
-            padding: 'var(--spacing-md)',
-            borderBottom: '1px solid var(--color-border)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <button
-            onClick={() => setShowSidebar(!showSidebar)}
+      {/* Messages */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 'var(--spacing-lg)',
+          marginBottom: 'var(--spacing-xl)',
+          minHeight: '400px',
+        }}
+      >
+        {messages.length === 0 && (
+          <div
             style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '1.5rem',
-              color: 'var(--color-text)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '300px',
+              color: 'var(--color-text-secondary)',
             }}
           >
-            ☰
-          </button>
-          <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Chat IA</h2>
-          <div style={{ width: 24 }} />
-        </div>
-
-        {/* Messages */}
-        <div
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: 'var(--spacing-lg)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'var(--spacing-md)',
-          }}
-        >
-          {messages.length === 0 && (
             <div
               style={{
                 textAlign: 'center',
-                color: 'var(--color-text-secondary)',
-                marginTop: '40px',
+                padding: 'var(--spacing-2xl)',
               }}
             >
-              <p style={{ fontSize: '1.25rem', marginBottom: 'var(--spacing-md)' }}>👋 Olá!</p>
-              <p>Como posso ajudar com seu diabetes hoje?</p>
-              <p style={{ fontSize: '0.875rem', marginTop: 'var(--spacing-lg)' }}>
-                Exemplos:
-                <br />
-                • "Minha glicose está 250, quanto de insulina?"
-                <br />
-                • "Comi arroz e feijão no almoço"
-                <br />
-                • "Registrar glicose 120 em jejum"
+              <div
+                style={{
+                  fontSize: '56px',
+                  marginBottom: 'var(--spacing-lg)',
+                  opacity: 0.2,
+                }}
+              >
+                ◐
+              </div>
+              <p
+                style={{
+                  fontSize: 'var(--font-size-base)',
+                  color: 'var(--color-text-tertiary)',
+                }}
+              >
+                Comece uma conversa para calcular insulina<br />ou registrar glicoses de forma inteligente
               </p>
             </div>
-          )}
+          </div>
+        )}
 
-          {messages.map(msg => (
-            <div
-              key={msg.id}
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            style={{
+              display: 'flex',
+              justifyContent: message.role === 'user' ? 'flex-end' : 'flex-start',
+            }}
+          >
+            <Card
               style={{
-                display: 'flex',
-                justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                maxWidth: '85%',
+                backgroundColor:
+                  message.role === 'user'
+                    ? 'var(--color-primary-light)'
+                    : 'var(--color-bg-secondary)',
+                border:
+                  message.role === 'user'
+                    ? '1px solid rgba(0, 255, 157, 0.2)'
+                    : '1px solid var(--color-border)',
+                animation: 'fadeIn 0.3s ease-out',
+              }}
+            >
+              {message.role === 'assistant' && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginBottom: '10px',
+                  }}
+                >
+                  <span
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      background: 'var(--color-primary-gradient)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '10px',
+                      color: 'var(--color-text-inverse)',
+                    }}
+                  >
+                    ◐
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 'var(--font-size-xs)',
+                      color: 'var(--color-text-secondary)',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Glicose AI
+                  </span>
+                </div>
+              )}
+              <p
+                style={{
+                  fontSize: 'var(--font-size-base)',
+                  color:
+                    message.role === 'user'
+                      ? 'var(--color-text-primary)'
+                      : 'var(--color-text-secondary)',
+                  lineHeight: 'var(--line-height-relaxed)',
+                }}
+              >
+                {message.content}
+              </p>
+              {message.actions && message.actions.length > 0 && (
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 'var(--spacing-sm)',
+                    marginTop: 'var(--spacing-md)',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  {message.actions.map((action, index) => (
+                    <button
+                      key={index}
+                      onClick={() => processAction(action)}
+                      style={{
+                        padding: '6px 12px',
+                        backgroundColor: 'var(--color-primary-light)',
+                        color: 'var(--color-primary)',
+                        border: '1px solid rgba(0, 255, 157, 0.3)',
+                        borderRadius: 'var(--radius-md)',
+                        fontSize: 'var(--font-size-xs)',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        transition: 'all var(--transition-fast)',
+                      }}
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </div>
+        ))}
+        {loading && (
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-start',
+            }}
+          >
+            <Card
+              style={{
+                backgroundColor: 'var(--color-bg-secondary)',
+                border: '1px solid var(--color-border)',
               }}
             >
               <div
                 style={{
-                  maxWidth: '80%',
-                  padding: 'var(--spacing-md)',
-                  borderRadius: 'var(--radius-lg)',
-                  backgroundColor:
-                    msg.role === 'user' ? 'var(--color-primary)' : 'var(--color-bg-secondary)',
-                  color: msg.role === 'user' ? '#fff' : 'var(--color-text)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
                 }}
               >
-                <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{msg.content}</p>
-
-                {msg.actions && msg.actions.filter(a => a.type !== 'none').length > 0 && (
-                  <div style={{ marginTop: 'var(--spacing-sm)', display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-xs)' }}>
-                    {msg.actions.filter(a => a.type !== 'none').map((action, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => handleExecuteAction(action, msg.id)}
-                        disabled={action.confirmed}
-                        style={{
-                          padding: '4px 12px',
-                          borderRadius: 'var(--radius-md)',
-                          border: '1px solid var(--color-primary)',
-                          background: action.confirmed ? 'var(--color-success)' : 'transparent',
-                          color: action.confirmed ? '#fff' : 'var(--color-primary)',
-                          cursor: action.confirmed ? 'default' : 'pointer',
-                          fontSize: '0.75rem',
-                        }}
-                      >
-                        {action.confirmed ? '✓ Confirmado' : getActionLabel(action)}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
                 <div
                   style={{
-                    fontSize: '0.625rem',
-                    marginTop: 'var(--spacing-xs)',
-                    opacity: 0.7,
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--color-primary)',
+                    animation: 'pulse-glow 1s ease-in-out infinite',
                   }}
-                >
-                  {new Date(msg.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                </div>
+                />
+                <div
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--color-primary)',
+                    animation: 'pulse-glow 1s ease-in-out infinite 0.2s',
+                  }}
+                />
+                <div
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--color-primary)',
+                    animation: 'pulse-glow 1s ease-in-out infinite 0.4s',
+                  }}
+                />
               </div>
-            </div>
-          ))}
+            </Card>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
 
-          {loading && (
-            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-              <div
-                style={{
-                  padding: 'var(--spacing-md)',
-                  borderRadius: 'var(--radius-lg)',
-                  backgroundColor: 'var(--color-bg-secondary)',
-                }}
-              >
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  <div
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '50%',
-                      backgroundColor: 'var(--color-text-secondary)',
-                      animation: 'bounce 1.4s infinite ease-in-out both',
-                    }}
-                  />
-                  <div
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '50%',
-                      backgroundColor: 'var(--color-text-secondary)',
-                      animation: 'bounce 1.4s infinite ease-in-out both 0.16s',
-                    }}
-                  />
-                  <div
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '50%',
-                      backgroundColor: 'var(--color-text-secondary)',
-                      animation: 'bounce 1.4s infinite ease-in-out both 0.32s',
-                    }}
-                  />
-                </div>
-                <style>{`
-                  @keyframes bounce {
-                    0%, 80%, 100% { transform: scale(0); }
-                    40% { transform: scale(1); }
-                  }
-                `}</style>
-              </div>
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input */}
-        <div
+      {/* Input */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 'var(--spacing-md)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+        }}
+      >
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="Ex: registrar glicose 120 antes do almoço"
           style={{
-            padding: 'var(--spacing-md)',
-            borderTop: '1px solid var(--color-border)',
-            display: 'flex',
-            gap: 'var(--spacing-sm)',
+            flex: 1,
+            padding: '14px 18px',
+            backgroundColor: 'var(--color-bg-secondary)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-lg)',
+            color: 'var(--color-text-primary)',
+            fontSize: 'var(--font-size-base)',
+            outline: 'none',
+            transition: 'all var(--transition-fast)',
+          }}
+          onFocus={(e) => {
+            e.target.style.borderColor = 'var(--color-primary)'
+            e.target.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
+          }}
+          onBlur={(e) => {
+            e.target.style.borderColor = 'var(--color-border)'
+            e.target.style.boxShadow = 'none'
+          }}
+        />
+        <Button
+          variant="primary"
+          onClick={sendMessage}
+          disabled={!input.trim() || loading}
+          glow
+          style={{
+            padding: '14px 24px',
+            opacity: !input.trim() || loading ? 0.5 : 1,
           }}
         >
-          <input
-            type="text"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Digite sua mensagem..."
-            style={{
-              flex: 1,
-              padding: 'var(--spacing-md)',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--color-border)',
-              backgroundColor: 'var(--color-bg)',
-              color: 'var(--color-text)',
-              fontSize: '1rem',
-            }}
-          />
-          <Button onClick={sendMessage} disabled={loading || !input.trim()}>
-            {loading ? 'Enviando...' : 'Enviar'}
-          </Button>
-        </div>
-      </Card>
-    </div>
+          <span style={{ fontSize: '18px' }}>→</span>
+        </Button>
+      </div>
+    </>
   )
-}
-
-function getActionLabel(action: ChatAction): string {
-  switch (action.type) {
-    case 'save_glucose':
-      return `Salvar glicose ${action.data?.value} mg/dL`
-    case 'save_insulin':
-      return `Salvar ${action.data?.correction}U insulina`
-    case 'save_food':
-      return 'Salvar alimento'
-    case 'save_note':
-      return 'Salvar anotação'
-    case 'read_data':
-      return 'Ver dados'
-    default:
-      return 'Ação'
-  }
 }

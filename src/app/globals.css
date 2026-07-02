@@ -5,55 +5,114 @@
 }
 
 :root {
-  /* Primary colors - Apple blue */
-  --color-primary: #007aff;
-  --color-primary-hover: #0056cc;
-  --color-primary-light: rgba(0, 122, 255, 0.1);
+  /*
+   * GLICOSE AI - Bio-Tech Minimal Design System
+   * Inspirado em: dispositivos médicos de precisão + laboratórios de biotecnologia
+   */
 
-  /* Status colors */
-  --color-success: #34c759;
-  --color-success-light: rgba(52, 199, 89, 0.1);
-  --color-warning: #ff9500;
-  --color-warning-light: rgba(255, 149, 0, 0.1);
-  --color-danger: #ff3b30;
-  --color-danger-light: rgba(255, 59, 48, 0.1);
-  --color-critical: #dc3545;
+  /* Primary - Bio-luminescent green (enzymatic reaction) */
+  --color-primary: #00ff9d;
+  --color-primary-hover: #00e68e;
+  --color-primary-light: rgba(0, 255, 157, 0.06);
+  --color-primary-glow: rgba(0, 255, 157, 0.4);
+  --color-primary-gradient: linear-gradient(135deg, #00ff9d 0%, #00d4ff 100%);
+  --color-primary-gradient-subtle: linear-gradient(180deg, rgba(0, 255, 157, 0.1) 0%, rgba(0, 212, 255, 0.05) 100%);
 
-  /* Background - Pure white / True black */
-  --color-bg: #ffffff;
-  --color-bg-secondary: #f5f5f7;
-  --color-bg-tertiary: #eaeaec;
+  /* Secondary accent - Laboratory pink (warm contrast) */
+  --color-accent: #ff6b8e;
+  --color-accent-light: rgba(255, 107, 142, 0.06);
+  --color-accent-glow: rgba(255, 107, 142, 0.3);
 
-  /* Text - Soft black */
-  --color-text: #1d1d1f;
-  --color-text-secondary: #6e6e73;
-  --color-text-tertiary: #86868b;
+  /* Data visualization colors */
+  --color-data-purple: #7b61ff;
+  --color-data-cyan: #00d4ff;
+  --color-data-amber: #ffb86b;
 
-  /* Borders - Subtle */
-  --color-border: rgba(0, 0, 0, 0.08);
-  --color-border-light: rgba(0, 0, 0, 0.04);
+  /* Status colors - recalibrated for bio-tech aesthetic */
+  --color-success: #00ff9d;
+  --color-success-light: rgba(0, 255, 157, 0.08);
+  --color-success-glow: 0 0 24px rgba(0, 255, 157, 0.3);
+  --color-warning: #ffb86b;
+  --color-warning-light: rgba(255, 184, 107, 0.08);
+  --color-warning-glow: 0 0 24px rgba(255, 184, 107, 0.25);
+  --color-danger: #ff6b8e;
+  --color-danger-light: rgba(255, 107, 142, 0.08);
+  --color-danger-glow: 0 0 24px rgba(255, 107, 142, 0.3);
+  --color-critical: #ff4757;
 
-  /* Typography */
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  /* Background - Deep charcoal (less harsh than pure black) */
+  --color-bg: #0d0d12;
+  --color-bg-elevated: #15151e;
+  --color-bg-secondary: #1e1e2a;
+  --color-bg-tertiary: #252532;
+  --color-bg-contrast: #0a0a0f;
 
-  /* Border radius - Apple smooth */
-  --radius-xs: 6px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
+  /* Subtle gradient overlay for depth */
+  --color-bg-gradient: radial-gradient(ellipse at top, rgba(123, 97, 255, 0.03) 0%, transparent 60%);
+
+  /* Text - Calibrated for dark background */
+  --color-text: #fafafc;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #9494a3;
+  --color-text-tertiary: #5f5f6e;
+  --color-text-inverse: #0d0d12;
+  --color-text-muted: rgba(148, 148, 163, 0.6);
+
+  /* Borders - Hairline precision with subtle glow */
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-subtle: rgba(255, 255, 255, 0.03);
+  --color-border-light: rgba(255, 255, 255, 0.08);
+  --color-border-accent: rgba(0, 255, 157, 0.3);
+
+  /* Typography - Scientific precision */
+  --font-family: 'SF Pro Display', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Space Grotesk', 'SF Pro Display', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+
+  --font-size-xs: 0.6875rem;   /* 11px */
+  --font-size-sm: 0.8125rem;   /* 13px */
+  --font-size-base: 0.9375rem; /* 15px */
+  --font-size-lg: 1.125rem;    /* 18px */
+  --font-size-xl: 1.375rem;    /* 22px */
+  --font-size-2xl: 1.75rem;    /* 28px */
+  --font-size-3xl: 2.25rem;    /* 36px */
+  --font-size-4xl: 3rem;       /* 48px */
+  --font-size-5xl: 4rem;       /* 64px */
+
+  --line-height-tight: 1.2;
+  --line-height-base: 1.5;
+  --line-height-relaxed: 1.7;
+
+  --letter-spacing-tight: -0.03em;
+  --letter-spacing-base: -0.01em;
+  --letter-spacing-wide: 0.02em;
+  --letter-spacing-mono: 0;
+
+  /* Border radius - Precise, technical */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
   --radius-2xl: 24px;
+  --radius-3xl: 32px;
   --radius-full: 9999px;
 
-  /* Shadows - Ultra subtle */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.03);
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
-  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.1);
+  /* Shadows - Layered depth with colored glow */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.55), 0 8px 16px rgba(0, 0, 0, 0.35);
+  --shadow-2xl: 0 24px 80px rgba(0, 0, 0, 0.6), 0 12px 32px rgba(0, 0, 0, 0.4);
 
-  /* Spacing */
+  /* Glowing shadows for interactive/biometric elements */
+  --shadow-glow-primary: 0 0 32px rgba(0, 255, 157, 0.25), 0 0 80px rgba(0, 255, 157, 0.1);
+  --shadow-glow-accent: 0 0 32px rgba(255, 107, 142, 0.25), 0 0 80px rgba(255, 107, 142, 0.1);
+  --shadow-glow-warning: 0 0 32px rgba(255, 184, 107, 0.2), 0 0 80px rgba(255, 184, 107, 0.08);
+  --shadow-glow-danger: 0 0 32px rgba(255, 107, 142, 0.3), 0 0 80px rgba(255, 107, 142, 0.15);
+
+  /* Spacing - 4px grid */
   --spacing-xs: 4px;
   --spacing-sm: 8px;
   --spacing-md: 12px;
@@ -61,41 +120,108 @@
   --spacing-xl: 20px;
   --spacing-2xl: 28px;
   --spacing-3xl: 36px;
+  --spacing-4xl: 48px;
+  --spacing-5xl: 64px;
+  --spacing-6xl: 96px;
 
-  /* Transitions */
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  /* Transitions - Refined curves */
+  --transition-fast: 100ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-bounce: 600ms cubic-bezier(0.68, 0, 0.26, 1);
+
+  /* Glassmorphism - Dark mode optimized */
+  --glass-bg: rgba(21, 21, 30, 0.7);
+  --glass-bg-light: rgba(30, 30, 42, 0.5);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --glass-blur: blur(20px) saturate(140%);
+
+  /* Grid pattern for data sections */
+  --grid-pattern:
+    linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0.02) 1px,
+      transparent 1px
+    ) 0 0 / 20px 20px,
+    linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.02) 1px,
+      transparent 1px
+    ) 0 0 / 20px 20px;
 }
 
-@media (prefers-color-scheme: dark) {
+/* Light mode support (optional - primarily dark theme app) */
+@media (prefers-color-scheme: light) {
   :root {
-    /* Background - True black for OLED */
-    --color-bg: #000000;
-    --color-bg-secondary: #1c1c1e;
-    --color-bg-tertiary: #2c2c2e;
+    --color-bg: #fafafc;
+    --color-bg-elevated: #ffffff;
+    --color-bg-secondary: #f0f0f5;
+    --color-bg-tertiary: #e5e5ed;
+    --color-bg-contrast: #ffffff;
 
-    /* Text - High contrast white */
-    --color-text: #f5f5f7;
-    --color-text-secondary: #98989d;
-    --color-text-tertiary: #6e6e73;
+    --color-text: #1a1a2e;
+    --color-text-primary: #0d0d12;
+    --color-text-secondary: #5f5f6e;
+    --color-text-tertiary: #8a8a9e;
+    --color-text-inverse: #ffffff;
 
-    /* Borders - Subtle white */
-    --color-border: rgba(255, 255, 255, 0.1);
-    --color-border-light: rgba(255, 255, 255, 0.05);
+    --color-border: rgba(0, 0, 0, 0.06);
+    --color-border-subtle: rgba(0, 0, 0, 0.03);
+    --color-border-light: rgba(0, 0, 0, 0.1);
 
-    /* Primary adjusted for dark mode */
-    --color-primary: #0a84ff;
-    --color-primary-hover: #40a3ff;
-    --color-primary-light: rgba(10, 132, 255, 0.15);
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+    --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.15);
+    --shadow-2xl: 0 24px 80px rgba(0, 0, 0, 0.18);
 
-    /* Shadows - None in dark mode (pure black) */
-    --shadow-xs: none;
-    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
-    --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.5);
+    --glass-bg: rgba(255, 255, 255, 0.8);
+    --glass-bg-light: rgba(240, 240, 245, 0.6);
+    --glass-border: rgba(0, 0, 0, 0.06);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   }
+}
+
+/* Grid background pattern */
+.grid-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0.015) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.015) 1px,
+      transparent 1px
+    );
+  background-size: 40px 40px;
+  opacity: 0.4;
+}
+
+/* Ambient glow overlay */
+.grid-background::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(123, 97, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 0% 50%, rgba(0, 255, 157, 0.03) 0%, transparent 40%),
+    radial-gradient(ellipse at 100% 50%, rgba(0, 212, 255, 0.03) 0%, transparent 40%);
+  pointer-events: none;
 }
 
 html,
@@ -103,20 +229,24 @@ body {
   font-family: var(--font-family);
   background-color: var(--color-bg);
   color: var(--color-text);
-  line-height: 1.5;
+  line-height: var(--line-height-base);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  letter-spacing: -0.01em;
+  letter-spacing: var(--letter-spacing-base);
+  text-rendering: optimizeLegibility;
+  background-image: var(--color-bg-gradient);
+  background-attachment: fixed;
 }
 
 a {
   color: var(--color-primary);
   text-decoration: none;
-  transition: opacity var(--transition-fast);
+  transition: all var(--transition-fast);
+  position: relative;
 }
 
 a:hover {
-  opacity: 0.8;
+  color: var(--color-primary-hover);
 }
 
 button {
@@ -124,6 +254,7 @@ button {
   cursor: pointer;
   border: none;
   background: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 input,
@@ -131,13 +262,14 @@ textarea,
 select {
   font-family: inherit;
   font-size: inherit;
-  letter-spacing: -0.01em;
+  letter-spacing: var(--letter-spacing-base);
 }
 
 :focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 4px var(--color-primary-light);
 }
 
 /* Smooth scrolling */
@@ -147,29 +279,194 @@ html {
 
 /* Selection color */
 ::selection {
-  background-color: var(--color-primary-light);
-  color: var(--color-text);
+  background-color: var(--color-primary);
+  color: var(--color-text-inverse);
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling - refined dark theme */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--color-bg-secondary);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border);
+  background: var(--color-bg-tertiary);
   border-radius: var(--radius-full);
+  border: 2px solid var(--color-bg-secondary);
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-tertiary);
 }
 
+/* Custom utility classes */
+.text-gradient {
+  background: var(--color-primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-accent {
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-data-purple) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.glow-primary {
+  box-shadow: var(--shadow-glow-primary);
+}
+
+.glow-accent {
+  box-shadow: var(--shadow-glow-accent);
+}
+
+.grid-pattern {
+  background-image: var(--grid-pattern);
+}
+
+/* Pulse animation for biometric data */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 24px rgba(0, 255, 157, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(0, 255, 157, 0.4), 0 0 80px rgba(0, 255, 157, 0.15);
+  }
+}
+
+/* Float animation for cards */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Shimmer effect for loading states */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Scan line animation for data visualization */
+@keyframes scan {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+/* Fade in with upward motion */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide in from left */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Spin for loading indicators */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Biometric pulse - signature animation */
+@keyframes biometric-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  30% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+  60% {
+    transform: scale(0.98);
+    opacity: 1;
+  }
+}
+
+/* Bounce for notification dots */
+@keyframes bounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
+}
+
+/* Utility animation classes */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.4s ease-out;
+}
+
+.animate-pulse {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-biometric {
+  animation: biometric-pulse 3s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-secondary) 0%,
+    var(--color-bg-tertiary) 50%,
+    var(--color-bg-secondary) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

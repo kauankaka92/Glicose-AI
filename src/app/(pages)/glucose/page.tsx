@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, Button, Input, Alert } from '@/components/UI'
+import { Card, Button, Input, Alert, Badge } from '@/components/UI'
 import { saveGlucose, getGlucoseEntries, deleteGlucoseEntry } from '@/lib/storage'
 import { GlucoseEntry, GlucoseContext } from '@/lib/types'
 import { getGlucoseStatus, getGlucoseStatusLabel } from '@/lib/types'
@@ -87,22 +87,46 @@ export default function GlucosePage() {
 
   return (
     <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-      <h1
+      {/* Header */}
+      <div
         style={{
-          fontSize: '2rem',
-          fontWeight: 700,
-          marginBottom: 'var(--spacing-xl)',
+          marginBottom: 'var(--spacing-2xl)',
           textAlign: 'center',
         }}
       >
-        Glicose
-      </h1>
+        <h1
+          style={{
+            fontSize: 'var(--font-size-3xl)',
+            fontWeight: 700,
+            color: 'var(--color-text-primary)',
+            fontFamily: 'var(--font-display)',
+            letterSpacing: 'var(--letter-spacing-tight)',
+            marginBottom: 'var(--spacing-sm)',
+          }}
+        >
+          Glicose
+        </h1>
+        <p
+          style={{
+            fontSize: 'var(--font-size-sm)',
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          Registre suas medições de glicose
+        </p>
+      </div>
 
       {alert && <Alert type={alert.type} onClose={() => setAlert(null)}>{alert.message}</Alert>}
 
-      <Card style={{ marginBottom: 'var(--spacing-lg)' }}>
+      {/* Form Card */}
+      <Card
+        style={{
+          marginBottom: 'var(--spacing-2xl)',
+          background: 'linear-gradient(180deg, var(--color-bg-elevated) 0%, var(--color-bg-secondary) 100%)',
+        }}
+      >
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: 'var(--spacing-md)' }}>
+          <div style={{ marginBottom: 'var(--spacing-lg)' }}>
             <Input
               label="Glicose (mg/dL)"
               type="number"
@@ -116,14 +140,16 @@ export default function GlucosePage() {
             />
           </div>
 
-          <div style={{ marginBottom: 'var(--spacing-md)' }}>
+          <div style={{ marginBottom: 'var(--spacing-lg)' }}>
             <label
               style={{
                 display: 'block',
-                marginBottom: 'var(--spacing-xs)',
-                fontSize: '0.875rem',
+                marginBottom: 'var(--spacing-sm)',
+                fontSize: 'var(--font-size-sm)',
                 fontWeight: 500,
                 color: 'var(--color-text-secondary)',
+                letterSpacing: 'var(--letter-spacing-wide)',
+                textTransform: 'uppercase',
               }}
             >
               Contexto
@@ -133,12 +159,22 @@ export default function GlucosePage() {
               onChange={(e) => setContext(e.target.value as GlucoseContext)}
               style={{
                 width: '100%',
-                padding: 'var(--spacing-sm) var(--spacing-md)',
+                padding: '12px 14px',
                 borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--color-border)',
-                backgroundColor: 'var(--color-bg)',
-                color: 'var(--color-text)',
-                fontSize: '1rem',
+                border: `1px solid var(--color-border)`,
+                backgroundColor: 'var(--color-bg-secondary)',
+                color: 'var(--color-text-primary)',
+                fontSize: 'var(--font-size-base)',
+                outline: 'none',
+                transition: 'all var(--transition-fast)',
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = 'var(--color-primary)'
+                e.target.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'var(--color-border)'
+                e.target.style.boxShadow = 'none'
               }}
             >
               {contextOptions.map((opt) => (
@@ -149,7 +185,7 @@ export default function GlucosePage() {
             </select>
           </div>
 
-          <div style={{ marginBottom: 'var(--spacing-md)' }}>
+          <div style={{ marginBottom: 'var(--spacing-lg)' }}>
             <Input
               label="Observação (opcional)"
               value={note}
@@ -159,78 +195,150 @@ export default function GlucosePage() {
             />
           </div>
 
-          <Button type="submit" style={{ width: '100%' }}>
-            Registrar
+          <Button type="submit" variant="primary" glow style={{ width: '100%' }}>
+            Registrar Glicose
           </Button>
         </form>
       </Card>
 
-      <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}>
+      {/* History */}
+      <h2
+        style={{
+          fontSize: 'var(--font-size-lg)',
+          fontWeight: 700,
+          color: 'var(--color-text-primary)',
+          fontFamily: 'var(--font-display)',
+          marginBottom: 'var(--spacing-lg)',
+          letterSpacing: 'var(--letter-spacing-tight)',
+        }}
+      >
         Histórico
       </h2>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
-        {entries.map((entry) => (
-          <Card
-            key={entry.id}
-            style={{
-              padding: 'var(--spacing-md)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
-              <div
-                style={{
-                  fontSize: '1.5rem',
-                  fontWeight: 700,
-                  color: getStatusColor(entry.value),
-                  minWidth: '80px',
-                }}
-              >
-                {entry.value}
-              </div>
-              <div>
-                <div style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                  {formatDateTime(entry.timestamp)}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
-                  {contextOptions.find((c) => c.value === entry.context)?.label || entry.context}
-                </div>
-                {entry.note && (
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: 'var(--spacing-xs)' }}>
-                    {entry.note}
-                  </div>
-                )}
-              </div>
-            </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => handleDelete(entry.id)}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
+        {entries.map((entry) => {
+          const status = getGlucoseStatus(entry.value)
+          const statusLabel = getGlucoseStatusLabel(entry.value)
+          return (
+            <Card
+              key={entry.id}
               style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--color-text-secondary)',
-                fontSize: '1.25rem',
-                padding: 'var(--spacing-xs)',
+                padding: 'var(--spacing-lg)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                border: `1px solid ${status === 'normal' ? 'rgba(0, 255, 157, 0.15)' : 'var(--color-border)'}`,
               }}
             >
-              ×
-            </Button>
-          </Card>
-        ))}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    minWidth: '70px',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 'var(--font-size-2xl)',
+                      fontWeight: 700,
+                      color: getStatusColor(entry.value),
+                      fontFamily: 'var(--font-display)',
+                      letterSpacing: '-0.03em',
+                      lineHeight: 1,
+                    }}
+                  >
+                    {entry.value}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 'var(--font-size-xs)',
+                      color: 'var(--color-text-secondary)',
+                      marginTop: '4px',
+                    }}
+                  >
+                    mg/dL
+                  </span>
+                </div>
+                <div>
+                  <div
+                    style={{
+                      fontSize: 'var(--font-size-sm)',
+                      color: 'var(--color-text-secondary)',
+                      marginBottom: '4px',
+                    }}
+                  >
+                    {formatDateTime(entry.timestamp)}
+                  </div>
+                  <Badge variant="neutral" size="sm">
+                    {contextOptions.find((c) => c.value === entry.context)?.label || entry.context}
+                  </Badge>
+                  {entry.note && (
+                    <div
+                      style={{
+                        fontSize: 'var(--font-size-xs)',
+                        color: 'var(--color-text-tertiary)',
+                        marginTop: 'var(--spacing-xs)',
+                      }}
+                    >
+                      {entry.note}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => handleDelete(entry.id)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--color-text-tertiary)',
+                  fontSize: '20px',
+                  padding: '8px',
+                  opacity: 0.6,
+                  transition: 'all var(--transition-fast)',
+                }}
+              >
+                ×
+              </button>
+            </Card>
+          )
+        })}
 
         {entries.length === 0 && (
           <div
             style={{
               textAlign: 'center',
-              padding: 'var(--spacing-xl)',
+              padding: 'var(--spacing-3xl)',
               color: 'var(--color-text-secondary)',
             }}
           >
-            Nenhum registro ainda. Adicione sua primeira medição acima.
+            <div
+              style={{
+                fontSize: '48px',
+                marginBottom: 'var(--spacing-lg)',
+                opacity: 0.2,
+              }}
+            >
+              ◉
+            </div>
+            <p
+              style={{
+                fontSize: 'var(--font-size-base)',
+              }}
+            >
+              Nenhum registro ainda.
+            </p>
+            <p
+              style={{
+                fontSize: 'var(--font-size-sm)',
+                color: 'var(--color-text-tertiary)',
+                marginTop: 'var(--spacing-xs)',
+              }}
+            >
+              Adicione sua primeira medição acima.
+            </p>
           </div>
         )}
       </div>

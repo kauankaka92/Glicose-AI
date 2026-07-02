@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, Button, Input, Alert } from '@/components/UI'
+import { Card, Button, Input, Alert, Stat, ProgressBar } from '@/components/UI'
 import { saveInsulin, getInsulinEntries, deleteInsulinEntry, getSettings } from '@/lib/storage'
 import { InsulinEntry } from '@/lib/types'
 import { calculateTotalInsulin } from '@/lib/insights'
@@ -39,21 +39,13 @@ export default function InsulinPage() {
         meal: result.meal,
         total: result.total,
       })
-      setCorrection(result.correction.toString())
-      setMeal(result.meal.toString())
-      setTotal(result.total.toString())
+      setCorrection(result.correction.toFixed(1))
+      setMeal(result.meal.toFixed(1))
+      setTotal(result.total.toFixed(1))
     } else {
       setSuggestion(null)
     }
   }, [glucose, carbs])
-
-  const handleGlucoseChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setGlucose(e.target.value)
-  }
-
-  const handleCarbsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCarbs(e.target.value)
-  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -70,6 +62,7 @@ export default function InsulinPage() {
       total: totalValue,
       timestamp: new Date().toISOString(),
       glucoseValue: parseFloat(glucose) || undefined,
+      carbsValue: parseFloat(carbs) || undefined,
       note: note.trim() || undefined,
     })
 
@@ -104,197 +97,331 @@ export default function InsulinPage() {
 
   return (
     <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-      <h1
+      {/* Header */}
+      <div
         style={{
-          fontSize: '2rem',
-          fontWeight: 700,
-          marginBottom: 'var(--spacing-xl)',
+          marginBottom: 'var(--spacing-2xl)',
           textAlign: 'center',
         }}
       >
-        Insulina
-      </h1>
+        <h1
+          style={{
+            fontSize: 'var(--font-size-3xl)',
+            fontWeight: 700,
+            color: 'var(--color-text-primary)',
+            fontFamily: 'var(--font-display)',
+            letterSpacing: 'var(--letter-spacing-tight)',
+            marginBottom: 'var(--spacing-sm)',
+          }}
+        >
+          Insulina
+        </h1>
+        <p
+          style={{
+            fontSize: 'var(--font-size-sm)',
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          Calcule e registre suas doses
+        </p>
+      </div>
 
       {alert && <Alert type={alert.type} onClose={() => setAlert(null)}>{alert.message}</Alert>}
 
-      <Card style={{ marginBottom: 'var(--spacing-lg)' }}>
-        <form onSubmit={handleSubmit}>
+      {/* Suggestion Card */}
+      {suggestion && (
+        <Card
+          style={{
+            marginBottom: 'var(--spacing-xl)',
+            background: 'linear-gradient(135deg, rgba(0, 255, 157, 0.05) 0%, rgba(0, 212, 255, 0.03) 100%)',
+            border: '1px solid rgba(0, 255, 157, 0.15)',
+          }}
+        >
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 'var(--spacing-md)',
-              marginBottom: 'var(--spacing-md)',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: 'var(--spacing-lg)',
             }}
           >
+            <div style={{ textAlign: 'center' }}>
+              <p
+                style={{
+                  fontSize: 'var(--font-size-xs)',
+                  color: 'var(--color-text-secondary)',
+                  fontWeight: 600,
+                  letterSpacing: '0.02em',
+                  textTransform: 'uppercase',
+                  marginBottom: 'var(--spacing-sm)',
+                }}
+              >
+                Correção
+              </p>
+              <p
+                style={{
+                  fontSize: 'var(--font-size-2xl)',
+                  fontWeight: 700,
+                  color: 'var(--color-data-cyan)',
+                  fontFamily: 'var(--font-display)',
+                }}
+              >
+                {suggestion.correction.toFixed(1)}
+              </p>
+              <p
+                style={{
+                  fontSize: 'var(--font-size-xs)',
+                  color: 'var(--color-text-tertiary)',
+                }}
+              >
+                unidades
+              </p>
+            </div>
+            <div style={{ textAlign: 'center', borderLeft: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
+              <p
+                style={{
+                  fontSize: 'var(--font-size-xs)',
+                  color: 'var(--color-text-secondary)',
+                  fontWeight: 600,
+                  letterSpacing: '0.02em',
+                  textTransform: 'uppercase',
+                  marginBottom: 'var(--spacing-sm)',
+                }}
+              >
+                Refeição
+              </p>
+              <p
+                style={{
+                  fontSize: 'var(--font-size-2xl)',
+                  fontWeight: 700,
+                  color: 'var(--color-data-purple)',
+                  fontFamily: 'var(--font-display)',
+                }}
+              >
+                {suggestion.meal.toFixed(1)}
+              </p>
+              <p
+                style={{
+                  fontSize: 'var(--font-size-xs)',
+                  color: 'var(--color-text-tertiary)',
+                }}
+              >
+                unidades
+              </p>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <p
+                style={{
+                  fontSize: 'var(--font-size-xs)',
+                  color: 'var(--color-text-secondary)',
+                  fontWeight: 600,
+                  letterSpacing: '0.02em',
+                  textTransform: 'uppercase',
+                  marginBottom: 'var(--spacing-sm)',
+                }}
+              >
+                Total
+              </p>
+              <p
+                style={{
+                  fontSize: 'var(--font-size-2xl)',
+                  fontWeight: 700,
+                  color: 'var(--color-primary)',
+                  fontFamily: 'var(--font-display)',
+                  textShadow: 'var(--shadow-glow-primary)',
+                }}
+              >
+                {suggestion.total.toFixed(1)}
+              </p>
+              <p
+                style={{
+                  fontSize: 'var(--font-size-xs)',
+                  color: 'var(--color-text-tertiary)',
+                }}
+              >
+                unidades
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Form Card */}
+      <Card
+        style={{
+          marginBottom: 'var(--spacing-2xl)',
+        }}
+      >
+        <form onSubmit={handleSubmit}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
             <Input
-              label="Glicose atual (mg/dL)"
+              label="Glicose (mg/dL)"
               type="number"
               min="20"
               max="600"
               value={glucose}
-              onChange={handleGlucoseChange}
-              placeholder="Ex: 200"
+              onChange={(e) => setGlucose(e.target.value)}
+              placeholder="Ex: 120"
             />
-
             <Input
               label="Carboidratos (g)"
               type="number"
               min="0"
+              max="500"
               value={carbs}
-              onChange={handleCarbsChange}
-              placeholder="Ex: 60"
+              onChange={(e) => setCarbs(e.target.value)}
+              placeholder="Ex: 45"
             />
           </div>
 
-          {suggestion && (
-            <div
-              style={{
-                padding: 'var(--spacing-md)',
-                backgroundColor: 'var(--color-bg-secondary)',
-                borderRadius: 'var(--radius-md)',
-                marginBottom: 'var(--spacing-md)',
-              }}
-            >
-              <div style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginBottom: 'var(--spacing-sm)' }}>
-                Sugestão de dose
-              </div>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: 'var(--spacing-sm)',
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Correção</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>{suggestion.correction}U</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Refeição</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>{suggestion.meal}U</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Total</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--color-primary)' }}>
-                    {suggestion.total}U
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr 1fr',
-              gap: 'var(--spacing-md)',
-              marginBottom: 'var(--spacing-md)',
-            }}
-          >
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
             <Input
               label="Correção (U)"
               type="number"
-              min="0"
               step="0.1"
               value={correction}
               onChange={(e) => setCorrection(e.target.value)}
+              placeholder="0.0"
             />
-
             <Input
               label="Refeição (U)"
               type="number"
-              min="0"
               step="0.1"
               value={meal}
               onChange={(e) => setMeal(e.target.value)}
+              placeholder="0.0"
             />
+          </div>
 
+          <div style={{ marginBottom: 'var(--spacing-lg)' }}>
             <Input
               label="Total (U)"
               type="number"
-              min="0"
               step="0.1"
               value={total}
               onChange={(e) => setTotal(e.target.value)}
+              placeholder="0.0"
               required
             />
           </div>
 
-          <div style={{ marginBottom: 'var(--spacing-md)' }}>
+          <div style={{ marginBottom: 'var(--spacing-lg)' }}>
             <Input
               label="Observação (opcional)"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Ex: Aplicada antes do almoço"
+              placeholder="Ex: Antes do almoço"
               multiline
             />
           </div>
 
-          <Button type="submit" style={{ width: '100%' }}>
+          <Button type="submit" variant="primary" glow style={{ width: '100%' }}>
             Registrar Insulina
           </Button>
         </form>
       </Card>
 
-      <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}>
+      {/* History */}
+      <h2
+        style={{
+          fontSize: 'var(--font-size-lg)',
+          fontWeight: 700,
+          color: 'var(--color-text-primary)',
+          fontFamily: 'var(--font-display)',
+          marginBottom: 'var(--spacing-lg)',
+          letterSpacing: 'var(--letter-spacing-tight)',
+        }}
+      >
         Histórico
       </h2>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
         {entries.map((entry) => (
-          <Card key={entry.id} style={{ padding: 'var(--spacing-md)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 'var(--spacing-xs)' }}>
+          <Card
+            key={entry.id}
+            style={{
+              padding: 'var(--spacing-lg)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  minWidth: '70px',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 'var(--font-size-2xl)',
+                    fontWeight: 700,
+                    color: 'var(--color-primary)',
+                    fontFamily: 'var(--font-display)',
+                    textShadow: 'var(--shadow-glow-primary)',
+                  }}
+                >
+                  {entry.total.toFixed(1)}
+                </span>
+                <span
+                  style={{
+                    fontSize: 'var(--font-size-xs)',
+                    color: 'var(--color-text-secondary)',
+                  }}
+                >
+                  unidades
+                </span>
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-text-secondary)',
+                    marginBottom: '4px',
+                  }}
+                >
                   {formatDateTime(entry.timestamp)}
                 </div>
-                <div style={{ display: 'flex', gap: 'var(--spacing-md)', alignItems: 'baseline' }}>
-                  <div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Total: </span>
-                    <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-                      {entry.total}U
-                    </span>
-                  </div>
-                  {entry.correction > 0 && (
-                    <div style={{ fontSize: '0.875rem' }}>
-                      <span style={{ color: 'var(--color-text-secondary)' }}>Correção: </span>
-                      <span style={{ fontWeight: 500 }}>{entry.correction}U</span>
-                    </div>
-                  )}
-                  {entry.meal && entry.meal > 0 && (
-                    <div style={{ fontSize: '0.875rem' }}>
-                      <span style={{ color: 'var(--color-text-secondary)' }}>Refeição: </span>
-                      <span style={{ fontWeight: 500 }}>{entry.meal}U</span>
-                    </div>
-                  )}
-                </div>
                 {entry.glucoseValue && (
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: 'var(--spacing-xs)' }}>
+                  <div
+                    style={{
+                      fontSize: 'var(--font-size-xs)',
+                      color: 'var(--color-text-tertiary)',
+                    }}
+                  >
                     Glicose: {entry.glucoseValue} mg/dL
                   </div>
                 )}
                 {entry.note && (
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: 'var(--spacing-xs)' }}>
+                  <div
+                    style={{
+                      fontSize: 'var(--font-size-xs)',
+                      color: 'var(--color-text-tertiary)',
+                      marginTop: 'var(--spacing-xs)',
+                    }}
+                  >
                     {entry.note}
                   </div>
                 )}
               </div>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => handleDelete(entry.id)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--color-text-secondary)',
-                  fontSize: '1.25rem',
-                  padding: 'var(--spacing-xs)',
-                }}
-              >
-                ×
-              </Button>
             </div>
+            <button
+              onClick={() => handleDelete(entry.id)}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--color-text-tertiary)',
+                fontSize: '20px',
+                padding: '8px',
+                opacity: 0.6,
+                transition: 'all var(--transition-fast)',
+              }}
+            >
+              ×
+            </button>
           </Card>
         ))}
 
@@ -302,11 +429,26 @@ export default function InsulinPage() {
           <div
             style={{
               textAlign: 'center',
-              padding: 'var(--spacing-xl)',
+              padding: 'var(--spacing-3xl)',
               color: 'var(--color-text-secondary)',
             }}
           >
-            Nenhum registro ainda. Adicione sua primeira dose acima.
+            <div
+              style={{
+                fontSize: '48px',
+                marginBottom: 'var(--spacing-lg)',
+                opacity: 0.2,
+              }}
+            >
+              ◈
+            </div>
+            <p
+              style={{
+                fontSize: 'var(--font-size-base)',
+              }}
+            >
+              Nenhum registro de insulina.
+            </p>
           </div>
         )}
       </div>

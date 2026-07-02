@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card } from '@/components/UI'
-import { getGlucoseEntries, getFoodEntries, getInsulinEntries } from '@/lib/storage'
+import { Card, Badge, ProgressBar, Section, Container } from '@/components/UI'
+import { getGlucoseEntries } from '@/lib/storage'
 import { calculateGlucoseStats, getGlucoseDistribution } from '@/lib/insights'
 
 export default function ChartsPage() {
@@ -61,24 +61,48 @@ export default function ChartsPage() {
   const days = Object.keys(groupedData).slice(-14)
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-      <h1
+    <Container maxWidth="800px">
+      {/* Header */}
+      <div
         style={{
-          fontSize: '2rem',
-          fontWeight: 700,
-          marginBottom: 'var(--spacing-xl)',
+          marginBottom: 'var(--spacing-2xl)',
           textAlign: 'center',
         }}
       >
-        Gráficos
-      </h1>
+        <h1
+          style={{
+            fontSize: 'var(--font-size-3xl)',
+            fontWeight: 700,
+            color: 'var(--color-text-primary)',
+            fontFamily: 'var(--font-display)',
+            letterSpacing: 'var(--letter-spacing-tight)',
+            marginBottom: 'var(--spacing-sm)',
+          }}
+        >
+          Gráficos
+        </h1>
+        <p
+          style={{
+            fontSize: 'var(--font-size-sm)',
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          Visualize sua evolução
+        </p>
+      </div>
 
+      {/* Time Range Selector */}
       <div
         style={{
           display: 'flex',
           gap: 'var(--spacing-sm)',
-          marginBottom: 'var(--spacing-lg)',
+          marginBottom: 'var(--spacing-xl)',
           justifyContent: 'center',
+          padding: 'var(--spacing-sm)',
+          backgroundColor: 'var(--color-bg-secondary)',
+          borderRadius: 'var(--radius-lg)',
+          width: 'fit-content',
+          margin: '0 auto var(--spacing-xl)',
         }}
       >
         {(['7d', '30d', '90d'] as const).map((range) => (
@@ -86,14 +110,15 @@ export default function ChartsPage() {
             key={range}
             onClick={() => setTimeRange(range)}
             style={{
-              padding: 'var(--spacing-sm) var(--spacing-md)',
+              padding: '8px 16px',
               borderRadius: 'var(--radius-md)',
               border: 'none',
-              backgroundColor: timeRange === range ? 'var(--color-primary)' : 'var(--color-bg-secondary)',
-              color: timeRange === range ? '#fff' : 'var(--color-text)',
+              backgroundColor: timeRange === range ? 'var(--color-primary)' : 'transparent',
+              color: timeRange === range ? '#fff' : 'var(--color-text-secondary)',
               cursor: 'pointer',
               fontWeight: timeRange === range ? 600 : 400,
-              transition: 'all 0.2s',
+              transition: 'all var(--transition-base)',
+              fontSize: 'var(--font-size-sm)',
             }}
           >
             {range === '7d' ? '7 dias' : range === '30d' ? '30 dias' : '90 dias'}
@@ -101,191 +126,330 @@ export default function ChartsPage() {
         ))}
       </div>
 
-      <Card style={{ marginBottom: 'var(--spacing-lg)' }}>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}>
-          Distribuição de Glicose
-        </h2>
-
+      {/* Stats Cards */}
+      {stats && (
         <div
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(3, 1fr)',
             gap: 'var(--spacing-md)',
+            marginBottom: 'var(--spacing-xl)',
           }}
         >
-          <div
-            style={{
-              padding: 'var(--spacing-md)',
-              backgroundColor: 'var(--color-success)15',
-              borderRadius: 'var(--radius-md)',
-              textAlign: 'center',
-            }}
-          >
-            <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-success)' }}>
-              {distribution.inRangePercent}%
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>No alvo (70-180)</div>
-          </div>
-
-          <div
-            style={{
-              padding: 'var(--spacing-md)',
-              backgroundColor: 'var(--color-warning)15',
-              borderRadius: 'var(--radius-md)',
-              textAlign: 'center',
-            }}
-          >
-            <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-warning)' }}>
-              {distribution.lowPercent}%
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Baixo {'<'}70)</div>
-          </div>
-
-          <div
-            style={{
-              padding: 'var(--spacing-md)',
-              backgroundColor: 'var(--color-warning)15',
-              borderRadius: 'var(--radius-md)',
-              textAlign: 'center',
-            }}
-          >
-            <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-warning)' }}>
-              {distribution.highPercent}%
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Alto {'>'}180)</div>
-          </div>
+          <Card style={{ padding: 'var(--spacing-lg)', textAlign: 'center' }}>
+            <p
+              style={{
+                fontSize: 'var(--font-size-xs)',
+                color: 'var(--color-text-secondary)',
+                fontWeight: 600,
+                letterSpacing: '0.02em',
+                textTransform: 'uppercase',
+                marginBottom: 'var(--spacing-sm)',
+              }}
+            >
+              Média
+            </p>
+            <p
+              style={{
+                fontSize: 'var(--font-size-2xl)',
+                fontWeight: 700,
+                color: 'var(--color-text-primary)',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              {Math.round(stats.average)}
+            </p>
+            <p
+              style={{
+                fontSize: 'var(--font-size-xs)',
+                color: 'var(--color-text-tertiary)',
+              }}
+            >
+              mg/dL
+            </p>
+          </Card>
+          <Card style={{ padding: 'var(--spacing-lg)', textAlign: 'center' }}>
+            <p
+              style={{
+                fontSize: 'var(--font-size-xs)',
+                color: 'var(--color-text-secondary)',
+                fontWeight: 600,
+                letterSpacing: '0.02em',
+                textTransform: 'uppercase',
+                marginBottom: 'var(--spacing-sm)',
+              }}
+            >
+              Mínimo
+            </p>
+            <p
+              style={{
+                fontSize: 'var(--font-size-2xl)',
+                fontWeight: 700,
+                color: 'var(--color-warning)',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              {stats.min ?? '--'}
+            </p>
+            <p
+              style={{
+                fontSize: 'var(--font-size-xs)',
+                color: 'var(--color-text-tertiary)',
+              }}
+            >
+              mg/dL
+            </p>
+          </Card>
+          <Card style={{ padding: 'var(--spacing-lg)', textAlign: 'center' }}>
+            <p
+              style={{
+                fontSize: 'var(--font-size-xs)',
+                color: 'var(--color-text-secondary)',
+                fontWeight: 600,
+                letterSpacing: '0.02em',
+                textTransform: 'uppercase',
+                marginBottom: 'var(--spacing-sm)',
+              }}
+            >
+              Máximo
+            </p>
+            <p
+              style={{
+                fontSize: 'var(--font-size-2xl)',
+                fontWeight: 700,
+                color: 'var(--color-data-purple)',
+                fontFamily: 'var(--font-display)',
+              }}
+            >
+              {stats.max ?? '--'}
+            </p>
+            <p
+              style={{
+                fontSize: 'var(--font-size-xs)',
+                color: 'var(--color-text-tertiary)',
+              }}
+            >
+              mg/dL
+            </p>
+          </Card>
         </div>
-      </Card>
+      )}
 
-      <Card style={{ marginBottom: 'var(--spacing-lg)' }}>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}>
-          Evolução Diária
-        </h2>
-
-        {days.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 'var(--spacing-xl)', color: 'var(--color-text-secondary)' }}>
-            Sem dados no período selecionado
+      {/* Distribution Card */}
+      <Section title="Distribuição">
+        <Card
+          style={{
+            background: 'linear-gradient(135deg, var(--color-bg-elevated) 0%, var(--color-bg-secondary) 100%)',
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: '8px',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-text-secondary)',
+                  }}
+                >
+                  Na faixa (70-180 mg/dL)
+                </span>
+                <span
+                  style={{
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-success)',
+                    fontWeight: 600,
+                    fontFamily: 'var(--font-mono)',
+                  }}
+                >
+                  {Math.round(distribution.inRangePercent)}%
+                </span>
+              </div>
+              <ProgressBar
+                value={distribution.inRangePercent}
+                variant="success"
+              />
+            </div>
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: '8px',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-text-secondary)',
+                  }}
+                >
+                  Abaixo {'<'}70 mg/dL
+                </span>
+                <span
+                  style={{
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-warning)',
+                    fontWeight: 600,
+                    fontFamily: 'var(--font-mono)',
+                  }}
+                >
+                  {Math.round(distribution.lowPercent)}%
+                </span>
+              </div>
+              <ProgressBar
+                value={distribution.lowPercent}
+                variant="warning"
+              />
+            </div>
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: '8px',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-text-secondary)',
+                  }}
+                >
+                  Acima {'>'}180 mg/dL
+                </span>
+                <span
+                  style={{
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--color-warning)',
+                    fontWeight: 600,
+                    fontFamily: 'var(--font-mono)',
+                  }}
+                >
+                  {Math.round(distribution.highPercent)}%
+                </span>
+              </div>
+              <ProgressBar
+                value={distribution.highPercent}
+                variant="warning"
+              />
+            </div>
           </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <div style={{ display: 'flex', gap: 'var(--spacing-md)', minWidth: 'fit-content' }}>
-              {days.map((day) => {
-                const dayData = groupedData[day]
-                const dayValues = dayData.map((d) => d.value)
-                const dayAvg = Math.round(dayValues.reduce((a, b) => a + b, 0) / dayValues.length)
-                const dayMin = Math.min(...dayValues)
-                const dayMax = Math.max(...dayValues)
+        </Card>
+      </Section>
 
+      {/* Chart */}
+      <Section title="Evolução">
+        <Card
+          style={{
+            minHeight: '280px',
+            background: `
+              linear-gradient(180deg, var(--color-bg-elevated) 0%, var(--color-bg-secondary) 100%),
+              var(--grid-pattern)
+            `,
+          }}
+        >
+          {glucoseData.length === 0 ? (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '200px',
+                color: 'var(--color-text-secondary)',
+              }}
+            >
+              Sem dados no período selecionado
+            </div>
+          ) : (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'flex-end',
+                gap: '4px',
+                height: '220px',
+                padding: 'var(--spacing-md)',
+                overflowX: 'auto',
+              }}
+            >
+              {glucoseData.map((point, i) => {
+                const isInTarget = point.value >= 70 && point.value <= 180
+                const color = getColor(point.value)
                 return (
                   <div
-                    key={day}
+                    key={i}
                     style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 'var(--spacing-xs)',
-                      minWidth: '60px',
+                      flex: '0 0 auto',
+                      width: '6px',
+                      height: `${getChartHeight(point.value)}px`,
+                      backgroundColor: color,
+                      borderRadius: '2px',
+                      opacity: 0.8,
+                      transition: 'all var(--transition-base)',
+                      boxShadow: isInTarget ? '0 0 8px rgba(0, 255, 157, 0.3)' : 'none',
+                      position: 'relative',
                     }}
+                    title={`${formatTime(point.date)}: ${point.value} mg/dL`}
                   >
                     <div
                       style={{
-                        width: '40px',
-                        height: '200px',
-                        backgroundColor: 'var(--color-bg-secondary)',
-                        borderRadius: 'var(--radius-md)',
-                        position: 'relative',
-                        overflow: 'hidden',
+                        position: 'absolute',
+                        bottom: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        fontSize: '9px',
+                        color: 'var(--color-text-tertiary)',
+                        whiteSpace: 'nowrap',
+                        opacity: 0,
+                        transition: 'opacity var(--transition-fast)',
                       }}
                     >
-                      {dayData.map((d, i) => (
-                        <div
-                          key={i}
-                          style={{
-                            position: 'absolute',
-                            left: `${(i / dayData.length) * 100}%`,
-                            bottom: 0,
-                            width: `${40 / dayData.length}px`,
-                            height: `${getChartHeight(d.value)}px`,
-                            backgroundColor: getColor(d.value),
-                            opacity: 0.7,
-                            borderRadius: '2px 2px 0 0',
-                          }}
-                          title={`${formatTime(d.date)}: ${d.value} mg/dL`}
-                        />
-                      ))}
-                      <div
-                        style={{
-                          position: 'absolute',
-                          bottom: `${((70 - minValue) / (maxValue - minValue || 100)) * 100}%`,
-                          left: 0,
-                          right: 0,
-                          borderTop: '1px dashed var(--color-warning)',
-                          opacity: 0.5,
-                        }}
-                        title="Limite inferior (70)"
-                      />
-                      <div
-                        style={{
-                          position: 'absolute',
-                          bottom: `${((180 - minValue) / (maxValue - minValue || 100)) * 100}%`,
-                          left: 0,
-                          right: 0,
-                          borderTop: '1px dashed var(--color-success)',
-                          opacity: 0.5,
-                        }}
-                        title="Limite superior (180)"
-                      />
-                    </div>
-                    <div style={{ fontSize: '0.625rem', color: 'var(--color-text-secondary)', textAlign: 'center' }}>
-                      {formatDate(day)}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 600 }}>{dayAvg}</div>
-                    <div style={{ fontSize: '0.625rem', color: 'var(--color-text-secondary)' }}>
-                      {dayMin}-{dayMax}
+                      {point.value}
                     </div>
                   </div>
                 )
               })}
             </div>
-          </div>
-        )}
-      </Card>
-
-      {stats && (
-        <Card>
-          <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}>
-            Resumo do Período
-          </h2>
-
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-              gap: 'var(--spacing-md)',
-            }}
-          >
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Média</div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>{stats.average}</div>
-            </div>
-
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Mínimo</div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>{stats.min}</div>
-            </div>
-
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Máximo</div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>{stats.max}</div>
-            </div>
-
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Leituras</div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 600 }}>{stats.readings}</div>
-            </div>
-          </div>
+          )}
         </Card>
-      )}
-    </div>
+      </Section>
+
+      {/* Data Points List */}
+      <Section title={`Últimas medições (${days.length} dias)`}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
+          {glucoseData.slice(-10).reverse().map((point, i) => (
+            <Card
+              key={i}
+              style={{
+                padding: 'var(--spacing-md)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 'var(--font-size-sm)',
+                  color: 'var(--color-text-secondary)',
+                }}
+              >
+                {formatDate(point.date)} às {formatTime(point.date)}
+              </span>
+              <Badge
+                variant={point.value >= 70 && point.value <= 180 ? 'success' : 'warning'}
+                glow={point.value >= 70 && point.value <= 180}
+              >
+                {point.value} mg/dL
+              </Badge>
+            </Card>
+          ))}
+        </div>
+      </Section>
+    </Container>
   )
 }

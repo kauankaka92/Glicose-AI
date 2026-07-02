@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, Button, Input, Alert } from '@/components/UI'
+import { Card, Button, Input, Alert, Toggle, Divider, Container } from '@/components/UI'
 import { getSettings, saveSettings, exportData, importData, clearAllData } from '@/lib/storage'
 import { UserSettings } from '@/lib/types'
 
@@ -14,6 +14,8 @@ export default function SettingsPage() {
   })
   const [alert, setAlert] = useState<{ type: 'success' | 'danger'; message: string } | null>(null)
   const [importText, setImportText] = useState('')
+  const [showImport, setShowImport] = useState(false)
+  const [showExport, setShowExport] = useState(false)
 
   useEffect(() => {
     setSettings(getSettings())
@@ -53,153 +55,300 @@ export default function SettingsPage() {
 
     const success = importData(importText)
     if (success) {
-      setAlert({ type: 'success', message: 'Dados importados com sucesso! Recarregue a página.' })
+      setAlert({ type: 'success', message: 'Dados importados com sucesso!' })
+      setSettings(getSettings())
+      setShowImport(false)
       setImportText('')
     } else {
-      setAlert({ type: 'danger', message: 'Dados inválidos. Verifique o formato do backup.' })
+      setAlert({ type: 'danger', message: 'Falha ao importar dados. Verifique o formato.' })
     }
     setTimeout(() => setAlert(null), 3000)
   }
 
-  const handleClearAll = () => {
-    if (confirm('TEM CERTEZA? Isso apagará TODOS os dados permanentemente!')) {
-      clearAllData()
-      setAlert({ type: 'success', message: 'Todos os dados foram apagados. Recarregue a página.' })
-      setTimeout(() => setAlert(null), 3000)
+  const handleClear = () => {
+    if (confirm('Tem certeza? Isso apagará TODOS os dados permanentemente.')) {
+      if (confirm('Esta ação não pode ser desfeita. Continuar?')) {
+        clearAllData()
+        setAlert({ type: 'success', message: 'Todos os dados foram apagados.' })
+        setTimeout(() => setAlert(null), 3000)
+      }
     }
   }
 
+  const settingItemStyle: React.CSSProperties = {
+    marginBottom: 'var(--spacing-xl)',
+    paddingBottom: 'var(--spacing-xl)',
+    borderBottom: '1px solid var(--color-border)',
+  }
+
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-      <h1
+    <Container maxWidth="600px">
+      {/* Header */}
+      <div
         style={{
-          fontSize: '2rem',
-          fontWeight: 700,
-          marginBottom: 'var(--spacing-xl)',
+          marginBottom: 'var(--spacing-2xl)',
           textAlign: 'center',
         }}
       >
-        Ajustes
-      </h1>
+        <h1
+          style={{
+            fontSize: 'var(--font-size-3xl)',
+            fontWeight: 700,
+            color: 'var(--color-text-primary)',
+            fontFamily: 'var(--font-display)',
+            letterSpacing: 'var(--letter-spacing-tight)',
+            marginBottom: 'var(--spacing-sm)',
+          }}
+        >
+          Ajustes
+        </h1>
+        <p
+          style={{
+            fontSize: 'var(--font-size-sm)',
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          Configure suas preferências
+        </p>
+      </div>
 
       {alert && <Alert type={alert.type} onClose={() => setAlert(null)}>{alert.message}</Alert>}
 
-      <Card style={{ marginBottom: 'var(--spacing-lg)' }}>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: 'var(--spacing-lg)' }}>
-          Configurações de Insulina
+      {/* Treatment Settings */}
+      <Card
+        style={{
+          marginBottom: 'var(--spacing-xl)',
+          background: 'linear-gradient(180deg, var(--color-bg-elevated) 0%, var(--color-bg-secondary) 100%)',
+        }}
+      >
+        <h2
+          style={{
+            fontSize: 'var(--font-size-lg)',
+            fontWeight: 700,
+            color: 'var(--color-text-primary)',
+            fontFamily: 'var(--font-display)',
+            marginBottom: 'var(--spacing-lg)',
+            letterSpacing: 'var(--letter-spacing-tight)',
+          }}
+        >
+          Tratamento
         </h2>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
+        <div style={settingItemStyle}>
           <Input
-            label="Glicose Alvo (mg/dL)"
+            label="Glicose alvo (mg/dL)"
             type="number"
             value={settings.targetGlucose.toString()}
             onChange={(e) => handleChange('targetGlucose', e.target.value)}
-          />
-
-          <Input
-            label="Fator de Correção (mg/dL por unidade)"
-            type="number"
-            value={settings.correctionFactor.toString()}
-            onChange={(e) => handleChange('correctionFactor', e.target.value)}
-          />
-
-          <Input
-            label="Relação Insulina:Carbo (1U para Xg)"
-            type="number"
-            value={settings.carbRatio.toString()}
-            onChange={(e) => handleChange('carbRatio', e.target.value)}
-          />
-
-          <Input
-            label="Tempo de Ação da Insulina (horas)"
-            type="number"
-            value={settings.activeInsulinTime.toString()}
-            onChange={(e) => handleChange('activeInsulinTime', e.target.value)}
+            hint="Valor recomendado: 100 mg/dL"
           />
         </div>
 
-        <Button onClick={handleSave} style={{ width: '100%', marginTop: 'var(--spacing-lg)' }}>
+        <div style={settingItemStyle}>
+          <Input
+            label="Fator de correção (mg/dL por U)"
+            type="number"
+            value={settings.correctionFactor.toString()}
+            onChange={(e) => handleChange('correctionFactor', e.target.value)}
+            hint="Quanto 1U de insulina reduz sua glicose"
+          />
+        </div>
+
+        <div style={settingItemStyle}>
+          <Input
+            label="Proporção insulina:carbo (g por U)"
+            type="number"
+            value={settings.carbRatio.toString()}
+            onChange={(e) => handleChange('carbRatio', e.target.value)}
+            hint="Quantos gramas de carbo 1U cobre"
+          />
+        </div>
+
+        <div style={settingItemStyle}>
+          <Input
+            label="Tempo de insulina ativa (horas)"
+            type="number"
+            value={settings.activeInsulinTime.toString()}
+            onChange={(e) => handleChange('activeInsulinTime', e.target.value)}
+            hint="Duração do efeito da insulina"
+          />
+        </div>
+
+        <Button variant="primary" glow onClick={handleSave} style={{ width: '100%' }}>
           Salvar Configurações
         </Button>
       </Card>
 
-      <Card style={{ marginBottom: 'var(--spacing-lg)' }}>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: 'var(--spacing-lg)' }}>
-          Backup e Restauração
+      {/* Data Management */}
+      <Card style={{ marginBottom: 'var(--spacing-xl)' }}>
+        <h2
+          style={{
+            fontSize: 'var(--font-size-lg)',
+            fontWeight: 700,
+            color: 'var(--color-text-primary)',
+            fontFamily: 'var(--font-display)',
+            marginBottom: 'var(--spacing-lg)',
+            letterSpacing: 'var(--letter-spacing-tight)',
+          }}
+        >
+          Dados
         </h2>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
-          <Button onClick={handleExport} variant="secondary">
-            Exportar Dados (Download)
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setShowExport(!showExport)
+              setShowImport(false)
+            }}
+          >
+            {showExport ? 'Cancelar' : 'Exportar Backup'}
           </Button>
 
-          <div>
-            <label
+          {showExport && (
+            <div
               style={{
-                display: 'block',
-                marginBottom: 'var(--spacing-xs)',
-                fontSize: '0.875rem',
-                fontWeight: 500,
-                color: 'var(--color-text-secondary)',
+                padding: 'var(--spacing-lg)',
+                backgroundColor: 'var(--color-bg-secondary)',
+                borderRadius: 'var(--radius-md)',
+                textAlign: 'center',
               }}
             >
-              Importar Dados (Cole o JSON do backup)
-            </label>
-            <textarea
-              value={importText}
-              onChange={(e) => setImportText(e.target.value)}
-              placeholder="Cole aqui o conteúdo do arquivo de backup..."
+              <p
+                style={{
+                  fontSize: 'var(--font-size-sm)',
+                  color: 'var(--color-text-secondary)',
+                  marginBottom: 'var(--spacing-md)',
+                }}
+              >
+                Baixe todos os seus dados em formato JSON
+              </p>
+              <Button variant="primary" onClick={handleExport}>
+                Download
+              </Button>
+            </div>
+          )}
+
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setShowImport(!showImport)
+              setShowExport(false)
+            }}
+          >
+            {showImport ? 'Cancelar' : 'Importar Backup'}
+          </Button>
+
+          {showImport && (
+            <div
               style={{
-                width: '100%',
-                minHeight: '100px',
-                padding: 'var(--spacing-md)',
+                padding: 'var(--spacing-lg)',
+                backgroundColor: 'var(--color-bg-secondary)',
                 borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--color-border)',
-                backgroundColor: 'var(--color-bg)',
-                color: 'var(--color-text)',
-                fontSize: '0.875rem',
-                resize: 'vertical',
               }}
-            />
-            <Button onClick={handleImport} variant="secondary" style={{ marginTop: 'var(--spacing-sm)' }}>
-              Importar Dados
-            </Button>
-          </div>
+            >
+              <p
+                style={{
+                  fontSize: 'var(--font-size-sm)',
+                  color: 'var(--color-text-secondary)',
+                  marginBottom: 'var(--spacing-md)',
+                }}
+              >
+                Cole os dados do backup JSON
+              </p>
+              <textarea
+                value={importText}
+                onChange={(e) => setImportText(e.target.value)}
+                placeholder="Cole aqui..."
+                style={{
+                  width: '100%',
+                  minHeight: '120px',
+                  padding: 'var(--spacing-md)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--color-border)',
+                  backgroundColor: 'var(--color-bg)',
+                  color: 'var(--color-text-primary)',
+                  fontSize: 'var(--font-size-sm)',
+                  fontFamily: 'var(--font-mono)',
+                  resize: 'vertical',
+                  outline: 'none',
+                }}
+              />
+              <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-md)' }}>
+                <Button variant="primary" onClick={handleImport} style={{ flex: 1 }}>
+                  Importar
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </Card>
 
-      <Card>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: 'var(--spacing-lg)', color: 'var(--color-danger)' }}>
+      {/* Danger Zone */}
+      <Card
+        style={{
+          border: '1px solid var(--color-danger)',
+          background: 'linear-gradient(180deg, rgba(255, 107, 142, 0.05) 0%, rgba(255, 71, 87, 0.02) 100%)',
+        }}
+      >
+        <h2
+          style={{
+            fontSize: 'var(--font-size-lg)',
+            fontWeight: 700,
+            color: 'var(--color-danger)',
+            fontFamily: 'var(--font-display)',
+            marginBottom: 'var(--spacing-lg)',
+            letterSpacing: 'var(--letter-spacing-tight)',
+          }}
+        >
           Zona de Perigo
         </h2>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
-          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-            Esta ação não pode ser desfeita. Todos os dados de glicose, alimentação e insulina serão permanentemente apagados.
-          </p>
+        <p
+          style={{
+            fontSize: 'var(--font-size-sm)',
+            color: 'var(--color-text-secondary)',
+            marginBottom: 'var(--spacing-lg)',
+          }}
+        >
+          Ações destrutivas que não podem ser desfeitas
+        </p>
 
-          <Button onClick={handleClearAll} variant="danger">
-            Apagar Todos os Dados
-          </Button>
-        </div>
+        <Button
+          variant="danger"
+          onClick={handleClear}
+          style={{ width: '100%' }}
+        >
+          Apagar Todos os Dados
+        </Button>
       </Card>
 
-      <Card style={{ marginTop: 'var(--spacing-lg)' }}>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: 'var(--spacing-md)' }}>
-          Sobre
-        </h2>
-
-        <div style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-          <div><strong>Glicose AI</strong> v4.0.0</div>
-          <div style={{ marginTop: 'var(--spacing-sm)' }}>
-            Sistema de monitoramento de glicose com processamento de linguagem natural.
-          </div>
-          <div style={{ marginTop: 'var(--spacing-sm)' }}>
-            Os dados são armazenados localmente no seu navegador.
-          </div>
-        </div>
-      </Card>
-    </div>
+      {/* Footer */}
+      <div
+        style={{
+          marginTop: 'var(--spacing-3xl)',
+          textAlign: 'center',
+          padding: 'var(--spacing-xl)',
+        }}
+      >
+        <p
+          style={{
+            fontSize: 'var(--font-size-xs)',
+            color: 'var(--color-text-tertiary)',
+          }}
+        >
+          Glicose AI v4.0
+        </p>
+        <p
+          style={{
+            fontSize: 'var(--font-size-xs)',
+            color: 'var(--color-text-tertiary)',
+            marginTop: 'var(--spacing-xs)',
+          }}
+        >
+          Bio-Tech Minimal Design System
+        </p>
+      </div>
+    </Container>
   )
 }
