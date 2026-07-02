@@ -13,20 +13,22 @@ export function Card({ children, title, className = '', style }: CardProps) {
       className={className}
       style={{
         backgroundColor: 'var(--color-bg)',
-        borderRadius: 'var(--radius-lg)',
-        padding: 'var(--spacing-lg)',
-        boxShadow: 'var(--shadow-md)',
+        borderRadius: 'var(--radius-xl)',
+        padding: 'var(--spacing-xl)',
+        boxShadow: 'var(--shadow-sm)',
         border: '1px solid var(--color-border)',
+        transition: 'all var(--transition-base)',
         ...style,
       }}
     >
       {title && (
         <h3
           style={{
-            fontSize: '1.125rem',
+            fontSize: '1rem',
             fontWeight: 600,
-            marginBottom: 'var(--spacing-md)',
+            marginBottom: 'var(--spacing-lg)',
             color: 'var(--color-text)',
+            letterSpacing: '-0.01em',
           }}
         >
           {title}
@@ -37,8 +39,23 @@ export function Card({ children, title, className = '', style }: CardProps) {
   )
 }
 
+export function CardGrid({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={className}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+        gap: 'var(--spacing-lg)',
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger'
+  variant?: 'primary' | 'secondary' | 'danger' | 'ghost'
   size?: 'sm' | 'md' | 'lg'
   children: React.ReactNode
 }
@@ -51,15 +68,17 @@ export function Button({ variant = 'primary', size = 'md', children, style, ...p
     gap: 'var(--spacing-sm)',
     borderRadius: 'var(--radius-md)',
     fontWeight: 500,
-    transition: 'all 0.2s',
+    transition: 'all var(--transition-fast)',
     border: 'none',
     cursor: 'pointer',
+    letterSpacing: '-0.01em',
   }
 
   const variants: Record<string, React.CSSProperties> = {
     primary: {
       backgroundColor: 'var(--color-primary)',
       color: '#fff',
+      boxShadow: 'var(--shadow-sm)',
     },
     secondary: {
       backgroundColor: 'var(--color-bg-secondary)',
@@ -69,21 +88,29 @@ export function Button({ variant = 'primary', size = 'md', children, style, ...p
     danger: {
       backgroundColor: 'var(--color-danger)',
       color: '#fff',
+      boxShadow: 'var(--shadow-sm)',
+    },
+    ghost: {
+      backgroundColor: 'transparent',
+      color: 'var(--color-text-secondary)',
     },
   }
 
   const sizes: Record<string, React.CSSProperties> = {
     sm: {
-      padding: 'var(--spacing-xs) var(--spacing-sm)',
-      fontSize: '0.875rem',
+      padding: '6px 12px',
+      fontSize: '0.8125rem',
+      height: '32px',
     },
     md: {
-      padding: 'var(--spacing-sm) var(--spacing-md)',
-      fontSize: '1rem',
+      padding: '10px 16px',
+      fontSize: '0.9375rem',
+      height: '40px',
     },
     lg: {
-      padding: 'var(--spacing-md) var(--spacing-lg)',
-      fontSize: '1.125rem',
+      padding: '14px 24px',
+      fontSize: '1rem',
+      height: '48px',
     },
   }
 
@@ -96,6 +123,18 @@ export function Button({ variant = 'primary', size = 'md', children, style, ...p
         ...style,
       }}
       {...props}
+      onMouseEnter={(e) => {
+        if (variant !== 'ghost' && !props.disabled) {
+          e.currentTarget.style.opacity = '0.9'
+          e.currentTarget.style.transform = 'translateY(-1px)'
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (variant !== 'ghost' && !props.disabled) {
+          e.currentTarget.style.opacity = '1'
+          e.currentTarget.style.transform = 'translateY(0)'
+        }
+      }}
     >
       {children}
     </button>
@@ -111,12 +150,14 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement | HTMLTe
 export function Input({ label, error, multiline, style, ...props }: InputProps) {
   const baseStyle: React.CSSProperties = {
     width: '100%',
-    padding: 'var(--spacing-sm) var(--spacing-md)',
+    padding: '12px 16px',
     borderRadius: 'var(--radius-md)',
     border: '1px solid var(--color-border)',
     backgroundColor: 'var(--color-bg)',
     color: 'var(--color-text)',
-    transition: 'border-color 0.2s',
+    transition: 'all var(--transition-fast)',
+    fontSize: '1rem',
+    letterSpacing: '-0.01em',
   }
 
   const errorStyle: React.CSSProperties = {
@@ -130,7 +171,7 @@ export function Input({ label, error, multiline, style, ...props }: InputProps) 
           style={{
             display: 'block',
             marginBottom: 'var(--spacing-xs)',
-            fontSize: '0.875rem',
+            fontSize: '0.8125rem',
             fontWeight: 500,
             color: 'var(--color-text-secondary)',
           }}
@@ -143,9 +184,18 @@ export function Input({ label, error, multiline, style, ...props }: InputProps) 
           style={{
             ...baseStyle,
             ...(error ? errorStyle : {}),
-            minHeight: '80px',
+            minHeight: '100px',
             resize: 'vertical',
+            fontFamily: 'inherit',
             ...style,
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = 'var(--color-primary)'
+            e.currentTarget.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = error ? 'var(--color-danger)' : 'var(--color-border)'
+            e.currentTarget.style.boxShadow = 'none'
           }}
           {...props}
         />
@@ -154,7 +204,16 @@ export function Input({ label, error, multiline, style, ...props }: InputProps) 
           style={{
             ...baseStyle,
             ...(error ? errorStyle : {}),
+            fontFamily: 'inherit',
             ...style,
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = 'var(--color-primary)'
+            e.currentTarget.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = error ? 'var(--color-danger)' : 'var(--color-border)'
+            e.currentTarget.style.boxShadow = 'none'
           }}
           {...props}
         />
@@ -181,37 +240,48 @@ interface AlertProps {
 }
 
 export function Alert({ type, children, onClose }: AlertProps) {
-  const colors: Record<string, string> = {
-    info: 'var(--color-primary)',
-    success: 'var(--color-success)',
-    warning: 'var(--color-warning)',
-    danger: 'var(--color-danger)',
+  const colors: Record<string, { bg: string; border: string; text: string }> = {
+    info: { bg: 'var(--color-primary-light)', border: 'rgba(0, 122, 255, 0.2)', text: 'var(--color-primary)' },
+    success: { bg: 'var(--color-success-light)', border: 'rgba(52, 199, 89, 0.2)', text: 'var(--color-success)' },
+    warning: { bg: 'var(--color-warning-light)', border: 'rgba(255, 149, 0, 0.2)', text: 'var(--color-warning)' },
+    danger: { bg: 'var(--color-danger-light)', border: 'rgba(255, 59, 48, 0.2)', text: 'var(--color-danger)' },
   }
+
+  const icons: Record<string, string> = {
+    info: 'ℹ️',
+    success: '✅',
+    warning: '⚠️',
+    danger: '❌',
+  }
+
+  const color = colors[type]
 
   return (
     <div
       style={{
-        padding: 'var(--spacing-md)',
-        borderRadius: 'var(--radius-md)',
-        backgroundColor: `${colors[type]}15`,
-        border: `1px solid ${colors[type]}30`,
-        color: 'var(--color-text)',
         display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'flex-start',
+        gap: 'var(--spacing-sm)',
+        padding: 'var(--spacing-md) var(--spacing-lg)',
+        borderRadius: 'var(--radius-md)',
+        backgroundColor: color.bg,
+        border: `1px solid ${color.border}`,
+        color: 'var(--color-text)',
       }}
     >
-      <span style={{ flex: 1 }}>{children}</span>
+      <span style={{ fontSize: '1.125rem' }}>{icons[type]}</span>
+      <div style={{ flex: 1, fontSize: '0.9375rem' }}>{children}</div>
       {onClose && (
         <button
           onClick={onClose}
           style={{
             background: 'none',
             border: 'none',
-            fontSize: '1.25rem',
-            color: 'var(--color-text-secondary)',
             cursor: 'pointer',
-            padding: '0 var(--spacing-sm)',
+            color: 'var(--color-text-secondary)',
+            fontSize: '1.25rem',
+            padding: 0,
+            lineHeight: 1,
           }}
         >
           ×
@@ -223,15 +293,25 @@ export function Alert({ type, children, onClose }: AlertProps) {
 
 interface BadgeProps {
   children: React.ReactNode
-  color?: 'default' | 'success' | 'warning' | 'danger'
+  color?: 'default' | 'primary' | 'success' | 'warning' | 'danger'
+  size?: 'sm' | 'md'
 }
 
-export function Badge({ children, color = 'default' }: BadgeProps) {
+export function Badge({ children, color = 'default', size = 'md' }: BadgeProps) {
   const colors: Record<string, string> = {
-    default: 'var(--color-text-secondary)',
+    default: 'var(--color-bg-secondary)',
+    primary: 'var(--color-primary)',
     success: 'var(--color-success)',
     warning: 'var(--color-warning)',
     danger: 'var(--color-danger)',
+  }
+
+  const textColors: Record<string, string> = {
+    default: 'var(--color-text)',
+    primary: '#fff',
+    success: '#fff',
+    warning: '#fff',
+    danger: '#fff',
   }
 
   return (
@@ -239,14 +319,14 @@ export function Badge({ children, color = 'default' }: BadgeProps) {
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        padding: 'var(--spacing-xs) var(--spacing-sm)',
-        borderRadius: 'var(--radius-sm)',
-        backgroundColor: `${colors[color]}15`,
-        color: colors[color],
-        fontSize: '0.75rem',
+        justifyContent: 'center',
+        padding: size === 'sm' ? '4px 8px' : '6px 12px',
+        borderRadius: 'var(--radius-full)',
+        backgroundColor: colors[color],
+        color: textColors[color],
+        fontSize: size === 'sm' ? '0.6875rem' : '0.8125rem',
         fontWeight: 600,
-        textTransform: 'uppercase',
-        letterSpacing: '0.5px',
+        letterSpacing: '-0.01em',
       }}
     >
       {children}
