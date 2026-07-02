@@ -191,15 +191,30 @@ Assistant: "Para 200 mg/dL: (200 - ${settings.targetGlucose}) / ${settings.corre
       console.warn('FALLING BACK: Using rule-based responses')
 
       // Fallback com respostas baseadas em regras (sem API)
-      const fallbackResponse = text.includes('glicose') && glucoseValue
+      // ORDEM IMPORTANTE: perguntas de cálculo PRIMEIRO, ações DEPOIS
+
+      // Extrair valor de glicose de perguntas como "para 500" ou "500 mg/dL"
+      const questionGlucoseMatch = text.match(/para\s*(\d+)|(\d+)\s*(mg|de\s*glicose)/i)
+      const questionGlucoseValue = questionGlucoseMatch?.[1] || questionGlucoseMatch?.[2]
+        ? parseInt(questionGlucoseMatch[1] || questionGlucoseMatch[2]) : null
+
+      const fallbackResponse =
+        // 1. Perguntas de cálculo/dose (VERIFICAR PRIMEIRO)
+        (text.includes('dose') || text.includes('calcular') || text.includes('quanto') || text.includes('quantas')) && questionGlucoseValue
+        ? `Para ${questionGlucoseValue} mg/dL: (${questionGlucoseValue} - ${settings.targetGlucose}) / ${settings.correctionFactor} = ${Math.round((questionGlucoseValue - settings.targetGlucose) / settings.correctionFactor * 10) / 10}U de correção.`
+        : (text.includes('dose') || text.includes('calcular') || text.includes('quanto') || text.includes('quantas'))
+        ? `Use: (glicose atual - ${settings.targetGlucose}) / ${settings.correctionFactor} = dose. Ex: para 200 mg/dL: ${(200 - settings.targetGlucose) / settings.correctionFactor}U`
+        // 2. Registro de glicose
+        : text.includes('glicose') && glucoseValue
         ? `Glicose de ${glucoseValue} mg/dL registrada. ${glucoseValue > 180 ? '⚠️ Acima do alvo!' : glucoseValue < 70 ? '⚠️ Hipoglicemia!' : '✓ No alvo!'}`
-        : text.includes('insulin') || text.includes('unidade')
-        ? `Insulina registrada. ${insulinValue ? `${insulinValue}U aplicadas.` : ''}`
+        // 3. Registro de insulina (usar "tomei" ou "apliquei" para evitar falsos positivos)
+        : (text.includes('tomei') || text.includes('apliquei') || text.includes('registre')) && insulinValue
+        ? `Insulina registrada: ${insulinValue}U aplicadas.`
+        // 4. Registro de carboidratos
         : text.includes('carb') || text.includes('comi') || text.includes('refeição')
         ? 'Refeição registrada. Lembre-se de calcular a insulina baseada nos carboidratos.'
-        : text.includes('dose') || text.includes('calcular') || text.includes('quanto')
-        ? `Use: (glicose atual - ${settings.targetGlucose}) / ${settings.correctionFactor} = dose de correção. Ex: (200 - ${settings.targetGlucose}) / ${settings.correctionFactor} = ${(200 - settings.targetGlucose) / settings.correctionFactor}U`
-        : 'Olá! Digite sua glicose (ex: "glicose 120") ou insulina (ex: "tomei 2 unidades") para registrar. Para perguntas, use "qual minha dose pra X de glicose?"'
+        // 5. Mensagem padrão
+        : 'Olá! Digite sua glicose (ex: "glicose 120") ou insulina (ex: "tomei 2 unidades") para registrar. Para perguntas, use "quantas unidades para 200 de glicose?"'
 
       return NextResponse.json({
         success: true,
