@@ -26,6 +26,14 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadData()
+
+    // Ouvir evento de atualização de dados
+    const handleDataChange = () => loadData()
+    window.addEventListener('glicose-data-changed', handleDataChange)
+
+    return () => {
+      window.removeEventListener('glicose-data-changed', handleDataChange)
+    }
   }, [])
 
   const getStatusColor = (value: number | null) => {

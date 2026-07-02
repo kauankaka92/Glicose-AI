@@ -1,252 +1,308 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getGlucoseEntries, getFoodEntries, getInsulinEntries, getSettings } from '@/lib/storage'
-import { calculateGlucoseStats, calculateTrend } from '@/lib/insights'
+import { saveGlucose, saveFood, saveInsulin, getSettings, getGlucoseEntries } from '@/lib/storage'
+import { GLUCOSE_STATUS, getGlucoseStatus, getGlucoseStatusLabel } from '@/lib/types'
 
-const NVIDIA_NIM_API_URL = 'https://integrate.api.nvidia.com/v1/chat/completions'
+/**
+ * MOTOR DE DADOS DO GLICOSE AI
+ *
+ * Fluxo obrigatório:
+ * 1. Interpretar texto
+ * 2. Extrair dados médicos
+ * 3. Criar JSON estruturado (EVENTO)
+ * 4. Enviar para API do site (/api/*)
+ * 5. Atualizar dashboard automaticamente
+ * 6. Retornar resposta curta ao usuário
+ */
 
-interface ChatMessage {
-  role: 'user' | 'assistant' | 'system'
-  content: string
-}
-
-interface ChatAction {
-  type: 'save_glucose' | 'save_insulin' | 'save_food' | 'save_note' | 'read_data' | 'none'
-  data?: Record<string, any>
-  confirmed?: boolean
+interface ChatEvent {
+  event_type: 'user_input'
+  actions: string[]
+  data: {
+    glucose?: number
+    context?: string
+    meal?: string[]
+    carbs_estimate?: number
+  }
+  insulin?: {
+    correction: number
+    meal: number
+    total: number
+  }
+  ui_update: boolean
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { message, messages, userId = 'default', settings: clientSettings } = body
+    const { message, settings: clientSettings } = body
 
-    const messageText = message || (messages?.length > 0 ? messages[messages.length - 1].content : null)
-
-    if (!messageText && (!messages || !Array.isArray(messages))) {
+    if (!message || typeof message !== 'string') {
       return NextResponse.json(
-        { success: false, error: 'Message or messages array is required' },
+        { success: false, error: 'Message is required' },
         { status: 400 }
       )
     }
 
-    // Usar settings do cliente (tem os dados atualizados do localStorage)
+    const text = message.toLowerCase()
     const settings = clientSettings || getSettings()
-    console.log('=== CHAT API DEBUG ===')
-    console.log('Settings from client:', clientSettings)
-    console.log('Settings used:', settings)
-    console.log('correctionFactor:', settings.correctionFactor)
-    console.log('Incoming message:', messageText)
 
-    const glucoseEntries = getGlucoseEntries()
-    console.log('Glucose entries count:', glucoseEntries.length)
+    // ============================================
+    // 1. EXTRATOR DE GLICOSE
+    // ============================================
+    const glucosePatterns = [
+      /glicose\s*[:\-]?\s*(\d{2,3})/i,
+      /glicemia\s*[:\-]?\s*(\d{2,3})/i,
+      /(?: đo|medir|medi)\s*(?:de\s*)?(?:glicose|glicemia)?\s*(\d{2,3})/i,
+      /(\d{2,3})\s*(?:de\s*)?glicose/i,
+      /(\d{2,3})\s*(?:de\s*)?glicemia/i,
+      /(\d{2,3})\s*mg/i,
+      /pra\s*(\d{2,3})\s*(?:de\s*)?glicose/i,
+    ]
 
-    const stats = calculateGlucoseStats(glucoseEntries)
-    const trend = calculateTrend(glucoseEntries)
-    const lastGlucose = glucoseEntries.length > 0 ? glucoseEntries[glucoseEntries.length - 1] : null
-    const foodEntries = getFoodEntries()
-    const insulinEntries = getInsulinEntries()
-
-    // PRIMEIRO: Tentar detectar e registrar dados diretamente
-    const text = messageText.toLowerCase()
-    console.log('Text lowercase:', text)
-
-    let directResponse: { response: string; actions: ChatAction[] } | null = null
-
-    // Detectar glicose com valor numérico (mais flexível)
-    const glucoseMatch = text.match(/glicose.*?(\d{2,3})|(\d{2,3}).*?mg|(\d{2,3}).*?(ao acordar|jejum|antes|depois|após|dormir|cama|madrugada)|estava.*?(\d{2,3})|(\d{2,3}).*?estava/i)
-    console.log('Glucose match result:', glucoseMatch)
-    const glucoseValue = glucoseMatch?.[1] || glucoseMatch?.[2] || glucoseMatch?.[3] || glucoseMatch?.[4] || glucoseMatch?.[5] || glucoseMatch?.[6] ?
-      parseInt(glucoseMatch?.[1] || glucoseMatch?.[2] || glucoseMatch?.[3] || glucoseMatch?.[4] || glucoseMatch?.[5] || glucoseMatch?.[6]) : null
-    console.log('Glucose value parsed:', glucoseValue)
-
-    // Detectar contexto
-    let context = 'other'
-    console.log('Checking context in:', text)
-    if (text.includes('ao acordar') || text.includes('jejum')) context = 'fasting'
-    else if (text.includes('antes')) context = 'before_meal'
-    else if (text.includes('depois') || text.includes('após')) context = 'after_meal'
-    else if (text.includes('dormir') || text.includes('cama')) context = 'bedtime'
-    else if (text.includes('madrugada')) context = 'night'
-    else if (text.includes('exercício') || text.includes('treino')) context = 'exercise'
-    console.log('Context detected:', context)
-
-    // Detectar insulina/unidades
-    const insulinMatch = text.match(/(\d+[.,]?\d*)\s*(unidade|insulina|u)[s]?/i)
-    console.log('Insulin match result:', insulinMatch)
-    const insulinValue = insulinMatch ? parseFloat(insulinMatch[1].replace(',', '.')) : null
-    console.log('Insulin value parsed:', insulinValue)
-
-    // SE tiver glicose E insulina na mesma mensagem -> registrar ambos
-    if (glucoseValue && insulinValue) {
-      const note = text.replace(/glicose|ao acordar|jejum|\d+/gi, '').trim().substring(0, 50)
-      console.log('Detected BOTH - Glucose:', glucoseValue, 'Insulin:', insulinValue, 'Context:', context)
-
-      directResponse = {
-        response: `✅ Registrado! Glicose: ${glucoseValue} mg/dL (${context}) e Insulina: ${insulinValue}U de correção.`,
-        actions: [
-          { type: 'save_glucose', data: { value: glucoseValue, context, note: note || 'Registro via chat' } },
-          { type: 'save_insulin', data: { correction: insulinValue, meal: 0, total: insulinValue, glucoseValue, note: note || 'Correção via chat' } },
-        ],
-      }
-    }
-    // SE tiver só glicose -> registrar glicose
-    else if (glucoseValue) {
-      const note = text.replace(/glicose|ao acordar|jejum|\d+/gi, '').trim().substring(0, 50)
-      console.log('Detected GLUCOSE ONLY - Value:', glucoseValue, 'Context:', context)
-
-      directResponse = {
-        response: `✅ Glicose registrada: ${glucoseValue} mg/dL (${context}). ${glucoseValue > 180 ? '⚠️ Está acima do alvo!' : glucoseValue < 70 ? '⚠️ Está baixo!' : '✓ No alvo!'}`,
-        actions: [
-          { type: 'save_glucose', data: { value: glucoseValue, context, note: note || 'Registro via chat' } },
-        ],
-      }
-    }
-    // SE tiver só insulina -> registrar insulina
-    else if (insulinValue) {
-      const note = text.replace(/unidade|insulina|\d+/gi, '').trim().substring(0, 50)
-      console.log('Detected INSULIN ONLY - Value:', insulinValue)
-
-      directResponse = {
-        response: `✅ Insulina registrada: ${insulinValue}U.`,
-        actions: [
-          { type: 'save_insulin', data: { correction: insulinValue, meal: 0, total: insulinValue, note: note || 'Registro via chat' } },
-        ],
-      }
-    }
-    // Detectar carboidratos/comida
-    const carbsMatch = text.match(/(\d+)\s*(g|grama|carb)/i) || text.match(/carb.*?(\d+)/i)
-    console.log('Carbs match result:', carbsMatch)
-    if (carbsMatch && !directResponse) {
-      const carbs = parseInt(carbsMatch[1])
-      console.log('Detected CARBS - Value:', carbs)
-      const mealDose = Math.round((carbs / settings.carbRatio) * 10) / 10
-
-      directResponse = {
-        response: `✅ Carboidratos registrados: ${carbs}g. Dose sugerida: ${mealDose}U de insulina.`,
-        actions: [
-          { type: 'save_food', data: { items: [{ name: 'Refeição', carbs }], totalCarbs: carbs, mealType: 'lunch', note: text.substring(0, 50) } },
-        ],
+    let glucoseValue: number | null = null
+    for (const pattern of glucosePatterns) {
+      const match = message.match(pattern)
+      if (match) {
+        glucoseValue = parseInt(match[1], 10)
+        if (glucoseValue >= 20 && glucoseValue <= 600) break
       }
     }
 
-    // Se detectou algo diretamente, retorna sem chamar API
-    if (directResponse) {
-      console.log('=== DIRECT RESPONSE - SKIPPING AI ===')
-      console.log('Response:', directResponse.response)
-      return NextResponse.json({
-        success: true,
-        data: {
-          response: directResponse.response,
-          actions: directResponse.actions,
-          timestamp: new Date().toISOString(),
-        },
-      })
+    // ============================================
+    // 2. EXTRATOR DE CONTEXTO
+    // ============================================
+    let context: string | undefined = undefined
+
+    if (text.includes('acordar') || text.includes('acordei') || text.includes('jejum') || text.includes('manhã') || text.includes('manha')) {
+      context = 'fasting'
+    } else if (text.includes('antes') && (text.includes('refeição') || text.includes('comer') || text.includes('almoço') || text.includes('janta') || text.includes('café'))) {
+      context = 'before_meal'
+    } else if (text.includes('depois') || text.includes('após') || text.includes('apos') || text.includes('pós') || text.includes('pos')) {
+      context = 'after_meal'
+    } else if (text.includes('dormir') || text.includes('cama') || text.includes('noite')) {
+      context = 'bedtime'
+    } else if (text.includes('exercício') || text.includes('exercicio') || text.includes('treino') || text.includes('academia')) {
+      context = 'exercise'
+    } else if (text.includes('almoço') || text.includes('almoçando') || text.includes('almocando')) {
+      context = 'lunch'
+    } else if (text.includes('janta') || text.includes('jantar')) {
+      context = 'dinner'
+    } else if (text.includes('café') || text.includes('cafe') || text.includes('desjejum')) {
+      context = 'breakfast'
     }
 
-    console.log('=== NO DIRECT MATCH - CALLING AI ===')
+    // ============================================
+    // 3. EXTRATOR DE ALIMENTOS
+    // ============================================
+    const foodKeywords = [
+      'arroz', 'feijão', 'feijao', 'carne', 'frango', 'peixe', 'ovo', 'ovos',
+      'salada', 'verdura', 'legume', 'fruta', 'banana', 'maçã', 'maca', 'laranja',
+      'pão', 'pao', 'paozinho', 'paozito', 'paosinho', 'paocinho', 'paodequeijo', 'pão de queijo',
+      'queijo', 'presunto', 'mussarela', 'muzzlearela',
+      'macarrão', 'macarrao', 'espaguete', 'lasanha',
+      'batata', 'mandioca', 'aipim', 'macaxeira',
+      'bolacha', 'biscoito', 'bolacha', 'torrada',
+      ' bolo', 'bolo', 'torta', 'doce', 'açucar', 'acucar', 'chocolate',
+      'café', 'cafe', 'leite', 'suco', 'refrigerante', 'refri', 'cerveja', 'vinho',
+      'pizza', 'hamburguer', 'hambúrguer', 'lanche', 'sanduiche', 'sanduíche',
+      'feijoada', 'churrasco', 'หอมหม้อ', 'кори', 'tapioca', 'mingau'
+    ]
 
-    // SEGUNDO: Se não detectou nada direto, chama a IA para responder perguntas
-    const systemPrompt = `Você é um assistente de diabetes. Responda de forma DIRETA e ÚTIL.
+    const mealPattern = /(?:comi|comedo|almocar|almocei|jantei|jantar|lanchei|lanchonete| Breakfast|cafe|café|comida|refeição|refeicao|aliment(?:ação|acao)|comeu|mastigar|degust(?:e|i|ar))\s*(?:de)?\s*(.+)/i
+    const mealMatch = message.match(mealPattern)
 
-DADOS DO USUÁRIO:
-- Alvo: ${settings.targetGlucose} mg/dL | Fator: ${settings.correctionFactor} | CarbRatio: ${settings.carbRatio}g/U
-- Última glicose: ${lastGlucose ? lastGlucose.value + ' mg/dL' : 'Nenhuma registrada'}
-- Média: ${Math.round(stats.average)} mg/dL | Tendência: ${trend.direction === 'up' ? '↗ subindo' : trend.direction === 'down' ? '↘ descendo' : '→ estável'}
+    let foods: string[] = []
+    let carbsEstimate: number | undefined = undefined
 
-REGRAS:
-1. Responda em 1-2 frases no máximo. Seja direto.
-2. Se perguntarem sobre cálculos, explique a fórmula: (glicose - alvo) / fator
-3. NÃO peça para registrar - apenas responda a pergunta
-4. Se glicose > 250, alerte sobre risco. Se < 70, alerte sobre hipoglicemia.
-5. Use emojis com moderação: ✅ ✉️ ⚠️
+    if (mealMatch) {
+      const foodText = mealMatch[1].toLowerCase()
+      foods = foodKeywords.filter(kw => foodText.includes(kw))
 
-EXEMPLO DE RESPOSTA:
-User: "qual minha dose pra 200 de glicose?"
-Assistant: "Para 200 mg/dL: (200 - ${settings.targetGlucose}) / ${settings.correctionFactor} = ${(200 - settings.targetGlucose) / settings.correctionFactor}U de correção."`
+      if (foods.length === 0) {
+        foods = foodText.split(/[\s,]+/).filter(w => w.length > 2).slice(0, 5)
+      }
 
-    const msgs: ChatMessage[] = messages || [{ role: 'user' as const, content: messageText }]
+      carbsEstimate = estimateCarbs(foods)
+    }
 
-    const response = await fetch(NVIDIA_NIM_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.NVIDIA_NIM_API_KEY}`,
+    // ============================================
+    // 4. MONTAR EVENTO ESTRUTURADO
+    // ============================================
+    const event: ChatEvent = {
+      event_type: 'user_input',
+      actions: [],
+      data: {
+        context
       },
-      body: JSON.stringify({
-        model: 'nvidia/llama-3.1-nemotron-70b-instruct',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...msgs.slice(-10)
-        ],
-        max_tokens: 200,
-        temperature: 0.3,
-      }),
-    })
+      ui_update: true
+    }
 
-    console.log('NVIDIA API Response status:', response.status)
-    console.log('NVIDIA API Key present:', !!process.env.NVIDIA_NIM_API_KEY)
-    console.log('NVIDIA API Key starts with:', process.env.NVIDIA_NIM_API_KEY?.substring(0, 10) + '...')
+    if (glucoseValue) {
+      event.data.glucose = glucoseValue
+      event.actions.push('save_glucose')
+    }
 
-    if (!response.ok) {
-      const errorData = await response.text()
-      console.error('NVIDIA API Error:', response.status, errorData)
-      console.warn('FALLING BACK: Using rule-based responses')
-      console.log('Settings received from client:', settings)
-      console.log('correctionFactor being used:', settings.correctionFactor)
+    if (foods.length > 0) {
+      event.data.meal = foods
+      event.data.carbs_estimate = carbsEstimate
+      event.actions.push('save_food')
+    }
 
-      // Fallback com respostas baseadas em regras (sem API)
-      // ORDEM IMPORTANTE: perguntas de cálculo PRIMEIRO, ações DEPOIS
+    // ============================================
+    // 5. CALCULAR INSULINA (SE GLICOSE FOR FORNECIDA)
+    // ============================================
+    if (glucoseValue) {
+      const correction = calculateInsulinCorrection(glucoseValue, settings.targetGlucose, settings.correctionFactor)
 
-      // Extrair valor de glicose de perguntas como "para 500", "500 mg/dL", "500 de glicose", "PRA 500 DE GLICOSE"
-      const questionGlucoseMatch = text.match(/(?:para|pra|a)\s*(\d+)|(?:^|\s)(\d+)\s*(?:mg|de\s*glicose)/i)
-      const questionGlucoseValue = questionGlucoseMatch?.[1] ? parseInt(questionGlucoseMatch[1]) : (questionGlucoseMatch?.[2] ? parseInt(questionGlucoseMatch[2]) : null)
-      console.log('Question glucose match:', questionGlucoseMatch, 'Value:', questionGlucoseValue)
-      console.log('Will calculate with correctionFactor:', settings.correctionFactor)
+      let mealInsulin = 0
+      if (carbsEstimate && carbsEstimate > 0) {
+        mealInsulin = Math.round(carbsEstimate / settings.carbRatio)
+      }
 
-      const fallbackResponse =
-        (text.includes('dose') || text.includes('calcular') || text.includes('quanto') || text.includes('quantas')) && questionGlucoseValue
-        ? `Para ${questionGlucoseValue} mg/dL: (${questionGlucoseValue} - ${settings.targetGlucose}) / ${settings.correctionFactor} = ${Math.round((questionGlucoseValue - settings.targetGlucose) / settings.correctionFactor * 10) / 10}U de correção.`
-        : (text.includes('dose') || text.includes('calcular') || text.includes('quanto') || text.includes('quantas'))
-        ? `Use: (glicose atual - ${settings.targetGlucose}) / ${settings.correctionFactor} = dose. Ex: para 200 mg/dL: ${(200 - settings.targetGlucose) / settings.correctionFactor}U`
-        // 2. Registro de glicose
-        : text.includes('glicose') && glucoseValue
-        ? `Glicose de ${glucoseValue} mg/dL registrada. ${glucoseValue > 180 ? '⚠️ Acima do alvo!' : glucoseValue < 70 ? '⚠️ Hipoglicemia!' : '✓ No alvo!'}`
-        // 3. Registro de insulina (usar "tomei" ou "apliquei" para evitar falsos positivos)
-        : (text.includes('tomei') || text.includes('apliquei') || text.includes('registre')) && insulinValue
-        ? `Insulina registrada: ${insulinValue}U aplicadas.`
-        // 4. Registro de carboidratos
-        : text.includes('carb') || text.includes('comi') || text.includes('refeição')
-        ? 'Refeição registrada. Lembre-se de calcular a insulina baseada nos carboidratos.'
-        // 5. Mensagem padrão
-        : 'Olá! Digite sua glicose (ex: "glicose 120") ou insulina (ex: "tomei 2 unidades") para registrar. Para perguntas, use "quantas unidades para 200 de glicose?"'
+      const total = correction + mealInsulin
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          response: fallbackResponse,
-          actions: [] as ChatAction[],
-          timestamp: new Date().toISOString(),
-        },
+      if (total > 0) {
+        event.insulin = {
+          correction,
+          meal: mealInsulin,
+          total
+        }
+        event.actions.push('calculate_dose')
+      }
+    }
+
+    // ============================================
+    // 6. SALVAR DADOS NO STORAGE
+    // ============================================
+    const savedData: Record<string, unknown> = {}
+
+    if (glucoseValue) {
+      savedData.glucose = saveGlucose({
+        value: glucoseValue,
+        timestamp: new Date().toISOString(),
+        context: context as any,
+        note: message
       })
     }
 
-    const data = await response.json()
-    const aiResponse = data.choices?.[0]?.message?.content || 'Não entendi. Pode reformular?'
+    if (foods.length > 0) {
+      savedData.food = saveFood({
+        items: foods.map(name => ({ name, carbs: Math.round(carbsEstimate! / foods.length) })),
+        totalCarbs: carbsEstimate || 0,
+        timestamp: new Date().toISOString(),
+        mealType: mapContextToMealType(context)
+      })
+    }
 
+    if (event.insulin && event.insulin.total > 0) {
+      savedData.insulin = saveInsulin({
+        correction: event.insulin.correction,
+        meal: event.insulin.meal,
+        total: event.insulin.total,
+        timestamp: new Date().toISOString(),
+        glucoseValue: glucoseValue || undefined,
+        note: message
+      })
+    }
+
+    // ============================================
+    // 7. LOG DO EVENTO
+    // ============================================
+    console.log('[MOTOR DE DADOS] Evento processado:', JSON.stringify(event, null, 2))
+    console.log('[MOTOR DE DADOS] Dados salvos:', savedData)
+
+    // ============================================
+    // 8. GERAR RESPOSTA CURTA
+    // ============================================
+    let response = ''
+
+    if (glucoseValue) {
+      const status = getGlucoseStatusLabel(glucoseValue)
+      if (event.insulin && event.insulin.total > 0) {
+        response = `✔ Glicose ${glucoseValue} registrada. Dose sugerida: ${event.insulin.total}U.`
+      } else {
+        response = `✔ Glicose ${glucoseValue} registrada. Status: ${status}.`
+      }
+    }
+
+    if (foods.length > 0) {
+      if (response) response += ' '
+      response += `✔ Refeição salva: ${foods.slice(0, 3).join(', ')}${foods.length > 3 ? '...' : ''}. ${carbsEstimate}g de carboidratos.`
+    }
+
+    if (!response) {
+      response = '✔ Mensagem recebida. Como posso ajudar?'
+    }
+
+    // ============================================
+    // 9. RETORNAR EVENTO + RESPOSTA
+    // ============================================
     return NextResponse.json({
       success: true,
-      data: {
-        response: aiResponse,
-        actions: [],
-        timestamp: new Date().toISOString(),
-      },
+      event,
+      saved: savedData,
+      response
     })
 
   } catch (error) {
-    console.error('Chat API Error:', error)
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    })
+    console.error('[MOTOR DE DADOS] Erro:', error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Erro ao processar mensagem',
+        details: error instanceof Error ? error.message : String(error)
+      },
+      { status: 500 }
+    )
   }
+}
+
+// ============================================
+// FUNÇÕES AUXILIARES
+// ============================================
+
+function calculateInsulinCorrection(glucose: number, target: number, factor: number): number {
+  if (glucose <= target) return 0
+  const correction = (glucose - target) / factor
+  return Math.round(correction * 2) / 2
+}
+
+function estimateCarbs(foods: string[]): number {
+  const carbTable: Record<string, number> = {
+    arroz: 28, feijao: 14, feijão: 14,
+    carne: 0, frango: 0, peixe: 0, ovo: 1, ovos: 1,
+    salada: 5, verdura: 5, legume: 8,
+    banana: 23, maçã: 14, maca: 14, laranja: 12,
+    pao: 15, pão: 15, paozinho: 15, paozito: 15, paosinho: 15, paocinho: 15, paodequeijo: 15,
+    queijo: 2, presunto: 2, mussarela: 2, muzzlearela: 2,
+    macarrao: 30, macarrão: 30, espaguete: 30, lasanha: 35,
+    batata: 17, mandioca: 25, aipim: 25, macaxeira: 25,
+    bolacha: 15, biscoito: 15, torrada: 15,
+    bolo: 35, torta: 30, doce: 20, acucar: 15, açúcar: 15, chocolate: 25,
+    cafe: 0, café: 0, leite: 12, suco: 15, refrigerante: 35, refri: 35, cerveja: 10, vinho: 5,
+    pizza: 35, hamburguer: 25, hambúrguer: 25, lanche: 30, sanduiche: 30, sanduíche: 30,
+    feijoada: 40, churrasco: 5, tapioca: 35, mingau: 25
+  }
+
+  let total = 0
+  for (const food of foods) {
+    const normalized = food.toLowerCase().trim()
+    total += carbTable[normalized] || 15
+  }
+  return total
+}
+
+function mapContextToMealType(context?: string): any {
+  const map: Record<string, any> = {
+    breakfast: 'breakfast',
+    lunch: 'lunch',
+    dinner: 'dinner',
+    fasting: 'breakfast',
+    before_meal: 'before_meal',
+    after_meal: 'after_meal',
+    bedtime: 'night_snack',
+    exercise: 'other',
+    other: 'other'
+  }
+  return context ? map[context] || 'other' : undefined
 }

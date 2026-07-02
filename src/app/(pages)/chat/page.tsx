@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Card, Button } from '@/components/UI'
+import { Card, Button, Section, Container } from '@/components/UI'
 import {
   getCurrentConversation,
   createConversation,
@@ -11,7 +11,6 @@ import {
   setCurrentConversationId,
   ChatConversation,
 } from '@/lib/chat-storage'
-import { saveGlucose, saveInsulin, saveFood, getSettings } from '@/lib/storage'
 
 interface Message {
   id: string
@@ -20,9 +19,21 @@ interface Message {
   timestamp: string
 }
 
-interface ChatAction {
-  type: 'save_glucose' | 'save_insulin' | 'save_food' | 'none'
-  data?: Record<string, any>
+interface ChatEvent {
+  event_type: 'user_input'
+  actions: string[]
+  data: {
+    glucose?: number
+    context?: string
+    meal?: string[]
+    carbs_estimate?: number
+  }
+  insulin?: {
+    correction: number
+    meal: number
+    total: number
+  }
+  ui_update: boolean
 }
 
 export default function Chat() {
@@ -66,131 +77,175 @@ export default function Chat() {
     loadConversations()
   }
 
-  const typeMessage = (fullText: string, messageId: string) => {
-    const chars = fullText.split('')
-    let currentIndex = 0
-    const typingSpeed = 20
+  const selectConversation = (id: string) => {
+    setCurrentConversationId(id)
+    const convs = getConversations()
+    const conv = convs.find(c => c.id === id)
+    if (conv) {
+      setMessages(conv.messages as Message[])
+      setCurrentId(id)
+    }
+  }
 
-    const assistantMessage: Message = {
-      id: messageId,
-      role: 'assistant',
-      content: '',
-      timestamp: new Date().toISOString(),
+  const handleDeleteConversation = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    deleteConversation(id)
+    if (id === currentConversationId) {
+      setMessages([])
+      setCurrentId(null)
+    }
+    loadConversations()
+  }
+
+  const executeActions = async (event: ChatEvent) => {
+    console.log('[CHAT] Executando ações do evento:', event)
+
+    // Notificar sistema que dados mudaram
+    const notifyDataChange = () => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('glicose-data-changed'))
+        console.log('[CHAT] Evento glicose-data-changed disparado')
+      }
     }
 
-    setMessages((prev) => [...prev, assistantMessage])
-
-    typewriterRef.current = setInterval(() => {
-      if (currentIndex < chars.length) {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === messageId
-              ? { ...msg, content: msg.content + chars[currentIndex] }
-              : msg
-          )
-        )
-        currentIndex++
-      } else {
-        if (typewriterRef.current) {
-          clearInterval(typewriterRef.current)
-          typewriterRef.current = null
-        }
+    // Ação: save_glucose
+    if (event.actions.includes('save_glucose') && event.data.glucose) {
+      try {
+        const response = await fetch('/api/glucose', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            value: event.data.glucose,
+            context: event.data.context,
+            timestamp: new Date().toISOString()
+          })
+        })
+        console.log('[CHAT] Glucose salva via API:', await response.json())
+      } catch (error) {
+        console.error('[CHAT] Erro ao salvar glicose:', error)
       }
-    }, typingSpeed)
+    }
+
+    // Ação: save_food
+    if (event.actions.includes('save_food') && event.data.meal) {
+      try {
+        const response = await fetch('/api/food', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: event.data.meal.map(name => ({ name, carbs: Math.round((event.data.carbs_estimate || 0) / event.data.meal!.length) })),
+            totalCarbs: event.data.carbs_estimate || 0,
+            mealType: event.data.context,
+            timestamp: new Date().toISOString()
+          })
+        })
+        console.log('[CHAT] Alimento salvo via API:', await response.json())
+      } catch (error) {
+        console.error('[CHAT] Erro ao salvar alimento:', error)
+      }
+    }
+
+    // Ação: calculate_dose / save_insulin
+    if (event.insulin && event.insulin.total > 0) {
+      try {
+        const response = await fetch('/api/insulin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            correction: event.insulin.correction,
+            meal: event.insulin.meal,
+            total: event.insulin.total,
+            glucoseValue: event.data.glucose,
+            timestamp: new Date().toISOString()
+          })
+        })
+        console.log('[CHAT] Insulina salva via API:', await response.json())
+      } catch (error) {
+        console.error('[CHAT] Erro ao salvar insulina:', error)
+      }
+    }
+
+    // Ação: log evento
+    if (event.actions.length > 0) {
+      try {
+        const response = await fetch('/api/ai-log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event_type: event.event_type,
+            actions: event.actions,
+            data: event.data,
+            insulin: event.insulin,
+            timestamp: new Date().toISOString()
+          })
+        })
+        console.log('[CHAT] Evento logado:', await response.json())
+      } catch (error) {
+        console.error('[CHAT] Erro ao logar evento:', error)
+      }
+    }
+
+    // Atualizar UI se necessário
+    if (event.ui_update) {
+      notifyDataChange()
+    }
   }
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return
 
-    const userInput = input.trim()
+    if (!currentConversationId) {
+      startNewConversation()
+      return
+    }
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: userInput,
-      timestamp: new Date().toISOString(),
+      content: input,
+      timestamp: new Date().toISOString()
     }
 
-    setMessages((prev) => [...prev, userMessage])
+    setMessages(prev => [...prev, userMessage])
     setInput('')
     setLoading(true)
 
-    if (typewriterRef.current) {
-      clearInterval(typewriterRef.current)
-      typewriterRef.current = null
-    }
-
     try {
-      const settings = getSettings()
-      console.log('[CHAT] Sending settings to API:', settings)
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: userInput,
-          messages: messages.map(m => ({ role: m.role, content: m.content })),
-          userId: currentConversationId || 'default',
-          settings,
-        }),
+        body: JSON.stringify({ message: input })
       })
 
       const data = await response.json()
+      console.log('[CHAT] Resposta da API:', data)
 
-      if (data.success && data.data) {
-        // Executar ações no cliente (localStorage)
-        if (data.data.actions && data.data.actions.length > 0) {
-          data.data.actions.forEach((action: ChatAction) => {
-            if (action.type === 'save_glucose' && action.data) {
-              saveGlucose({
-                value: action.data.value,
-                timestamp: new Date().toISOString(),
-                context: action.data.context,
-                note: action.data.note,
-              })
-              console.log('Glucose saved via action:', action.data)
-            }
-            if (action.type === 'save_insulin' && action.data) {
-              saveInsulin({
-                correction: action.data.correction,
-                meal: action.data.meal,
-                total: action.data.total,
-                timestamp: new Date().toISOString(),
-                glucoseValue: action.data.glucoseValue,
-                note: action.data.note,
-              })
-              console.log('Insulin saved via action:', action.data)
-            }
-            if (action.type === 'save_food' && action.data) {
-              saveFood({
-                items: action.data.items,
-                totalCarbs: action.data.totalCarbs,
-                timestamp: new Date().toISOString(),
-                mealType: action.data.mealType,
-                note: action.data.note,
-              })
-              console.log('Food saved via action:', action.data)
-            }
-          })
-        }
-
-        const assistantMessageId = (Date.now() + 1).toString()
-        typeMessage(data.data.response, assistantMessageId)
-
-        if (currentConversationId) {
-          addMessage(currentConversationId, userMessage)
-          addMessage(currentConversationId, {
-            role: 'assistant',
-            content: data.data.response,
-            timestamp: new Date().toISOString(),
-          })
-        }
-      } else {
-        const errorMessageId = (Date.now() + 1).toString()
-        typeMessage(data.error || 'Erro. Tente novamente.', errorMessageId)
+      if (data.success && data.event) {
+        // Executar ações do evento
+        await executeActions(data.event)
       }
+
+      // Adicionar resposta ao histórico
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: data.response || 'Erro ao processar mensagem.',
+        timestamp: new Date().toISOString()
+      }
+
+      setMessages(prev => [...prev, assistantMessage])
+      addMessage(currentConversationId, userMessage)
+      addMessage(currentConversationId, assistantMessage)
+
     } catch (error) {
-      console.error('Erro:', error)
-      const errorMessageId = (Date.now() + 1).toString()
-      typeMessage('Erro de conexão. Verifique sua internet.', errorMessageId)
+      console.error('[CHAT] Erro:', error)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: 'Erro de conexão. Tente novamente.',
+        timestamp: new Date().toISOString()
+      }
+      setMessages(prev => [...prev, errorMessage])
     } finally {
       setLoading(false)
     }
@@ -204,204 +259,122 @@ export default function Chat() {
   }
 
   return (
-    <>
-      {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 'var(--spacing-xl)',
-          paddingBottom: 'var(--spacing-lg)',
-          borderBottom: '1px solid var(--color-border)',
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontSize: 'var(--font-size-2xl)',
-              fontWeight: 700,
-              color: 'var(--color-text-primary)',
-              fontFamily: 'var(--font-display)',
-              letterSpacing: 'var(--letter-spacing-tight)',
-            }}
-          >
-            Chat IA
-          </h1>
-          <p
-            style={{
-              fontSize: 'var(--font-size-sm)',
-              color: 'var(--color-text-secondary)',
-              marginTop: 'var(--spacing-xs)',
-            }}
-          >
-            Ex: "glicose 267 ao acordar" ou "tomei 4 unidades"
-          </p>
-        </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={startNewConversation}
-          style={{
-            border: '1px solid var(--color-border)',
-          }}
-        >
-          + Nova
-        </Button>
-      </div>
+    <Container>
+      <Section title="Chat Glicose AI">
+        <div style={{ display: 'grid', gridTemplateColumns: '250px 1fr', gap: 'var(--spacing-lg)', height: 'calc(100vh - 200px)' }}>
+          {/* Sidebar - Conversas */}
+          <Card style={{ overflow: 'auto', height: '100%' }}>
+            <Button onClick={startNewConversation} variant="primary" style={{ width: '100%', marginBottom: 'var(--spacing-md)' }}>
+              + Nova Conversa
+            </Button>
 
-      {/* Messages */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 'var(--spacing-lg)',
-          marginBottom: 'var(--spacing-xl)',
-          minHeight: '400px',
-        }}
-      >
-        {messages.length === 0 && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: '300px',
-              color: 'var(--color-text-secondary)',
-            }}
-          >
-            <div style={{ textAlign: 'center', padding: 'var(--spacing-2xl)' }}>
-              <div style={{ fontSize: '56px', marginBottom: 'var(--spacing-lg)', opacity: 0.2 }}>
-                ◐
-              </div>
-              <p style={{ fontSize: 'var(--font-size-base)', color: 'var(--color-text-tertiary)' }}>
-                Digite sua glicose ou insulina para registrar automaticamente
-              </p>
-              <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 'var(--spacing-sm)' }}>
-                Ex: "minha glicose está 267" ou "tomei 3 unidades"
-              </p>
-            </div>
-          </div>
-        )}
-
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            style={{
-              display: 'flex',
-              justifyContent: message.role === 'user' ? 'flex-end' : 'flex-start',
-            }}
-          >
-            <Card
-              style={{
-                maxWidth: '85%',
-                backgroundColor:
-                  message.role === 'user'
-                    ? 'var(--color-primary-light)'
-                    : 'var(--color-bg-secondary)',
-                border:
-                  message.role === 'user'
-                    ? '1px solid rgba(0, 255, 157, 0.2)'
-                    : '1px solid var(--color-border)',
-              }}
-            >
-              {message.role === 'assistant' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <span
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
+              {conversations.map(conv => (
+                <div
+                  key={conv.id}
+                  onClick={() => selectConversation(conv.id)}
+                  style={{
+                    background: conv.id === currentConversationId ? 'var(--color-primary)' : 'var(--color-surface-secondary)',
+                    color: conv.id === currentConversationId ? '#fff' : 'inherit',
+                    padding: 'var(--spacing-sm)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                    transition: 'background 0.2s'
+                  }}
+                >
+                  <Card
                     style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      background: 'var(--color-primary-gradient)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '10px',
-                      color: 'var(--color-text-inverse)',
+                      flex: 1,
+                      background: 'transparent',
+                      padding: 'var(--spacing-sm)'
                     }}
                   >
-                    ◐
-                  </span>
-                  <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)', fontWeight: 600 }}>
-                    Glicose AI
-                  </span>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {conv.title}
+                    </span>
+                  </Card>
+                  <button
+                    onClick={(e) => handleDeleteConversation(conv.id, e)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'inherit',
+                      cursor: 'pointer',
+                      opacity: 0.6,
+                      fontSize: '0.8rem',
+                      padding: 'var(--spacing-xs)'
+                    }}
+                  >
+                    ✕
+                  </button>
                 </div>
-              )}
-              <p
+              ))}
+            </div>
+          </Card>
+
+          {/* Chat Area */}
+          <Card style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            {/* Messages */}
+            <div style={{ flex: 1, overflow: 'auto', marginBottom: 'var(--spacing-md)' }}>
+              {messages.map(msg => (
+                <div
+                  key={msg.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                    marginBottom: 'var(--spacing-md)'
+                  }}
+                >
+                  <Card
+                    style={{
+                      maxWidth: '70%',
+                      background: msg.role === 'user' ? 'var(--color-primary)' : 'var(--color-surface-secondary)',
+                      color: msg.role === 'user' ? '#fff' : 'inherit',
+                      padding: 'var(--spacing-md)',
+                      borderRadius: 'var(--radius-lg)'
+                    }}
+                  >
+                    {msg.content}
+                  </Card>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input */}
+            <div style={{ display: 'flex', gap: 'var(--spacing-md)', alignItems: 'flex-start' }}>
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyPress}
+                placeholder="Ex: Glicose 250 ao acordar, comi arroz e feijão"
                 style={{
-                  fontSize: 'var(--font-size-base)',
-                  color: message.role === 'user' ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
-                  lineHeight: 'var(--line-height-relaxed)',
-                  whiteSpace: 'pre-wrap',
+                  flex: 1,
+                  minHeight: '60px',
+                  padding: 'var(--spacing-md)',
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-md)',
+                  color: 'inherit',
+                  fontFamily: 'inherit',
+                  resize: 'none'
                 }}
+              />
+              <Button
+                onClick={sendMessage}
+                loading={loading}
+                variant="primary"
+                disabled={!input.trim()}
               >
-                {message.content}
-              </p>
-            </Card>
-          </div>
-        ))}
-
-        {loading && (
-          <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-            <Card style={{ backgroundColor: 'var(--color-bg-secondary)', padding: 'var(--spacing-md)' }}>
-              <div style={{ display: 'flex', gap: '4px' }}>
-                <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-primary)', animation: 'pulse-glow 1s ease-in-out infinite' }} />
-                <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-primary)', animation: 'pulse-glow 1s ease-in-out infinite 0.2s' }} />
-                <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-primary)', animation: 'pulse-glow 1s ease-in-out infinite 0.4s' }} />
-              </div>
-            </Card>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 'var(--spacing-md)',
-          paddingBottom: 'env(safe-area-inset-bottom)',
-        }}
-      >
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder='Ex: "glicose 150 antes do almoço"'
-          style={{
-            flex: 1,
-            padding: '14px 18px',
-            backgroundColor: 'var(--color-bg-secondary)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-lg)',
-            color: 'var(--color-text-primary)',
-            fontSize: 'var(--font-size-base)',
-            outline: 'none',
-            transition: 'all var(--transition-fast)',
-          }}
-          onFocus={(e) => {
-            e.target.style.borderColor = 'var(--color-primary)'
-            e.target.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
-          }}
-          onBlur={(e) => {
-            e.target.style.borderColor = 'var(--color-border)'
-            e.target.style.boxShadow = 'none'
-          }}
-        />
-        <Button
-          variant="primary"
-          onClick={sendMessage}
-          disabled={!input.trim() || loading}
-          glow
-          style={{
-            padding: '14px 24px',
-            opacity: !input.trim() || loading ? 0.5 : 1,
-          }}
-        >
-          <span style={{ fontSize: '18px' }}>→</span>
-        </Button>
-      </div>
-    </>
+                Enviar
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </Section>
+    </Container>
   )
 }
