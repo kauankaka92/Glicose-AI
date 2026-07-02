@@ -315,7 +315,7 @@ export interface GlucoseVariability {
 
 export function analyzeGlucoseVariability(entries: GlucoseEntry[]): GlucoseVariability {
   if (entries.length < 3) {
-    return { cv: 0, sd: 0, mean: 0, stability: 'estável', score: 50 }
+    return { cv: 0, sd: 0, mean: 0, stability: 'moderada', score: 50 }
   }
 
   const values = entries.map(e => e.value)
