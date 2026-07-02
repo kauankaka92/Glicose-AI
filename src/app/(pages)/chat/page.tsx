@@ -138,10 +138,11 @@ export default function Chat() {
   const sendMessage = async () => {
     if (!input.trim() || loading) return
 
+    const userInput = input.trim()
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input.trim(),
+      content: userInput,
       timestamp: new Date().toISOString(),
     }
 
@@ -154,11 +155,30 @@ export default function Chat() {
       typewriterRef.current = null
     }
 
+    // Verificar se é uma confirmação do usuário
+    const isConfirmation = /^(sim|sure|yes|ok|okay|claro|com certeza|isso|exato)$/i.test(userInput)
+
+    // Se for confirmação e tiver ações pendentes, executa
+    if (isConfirmation && messages.length > 0) {
+      const lastAssistantMsg = messages[messages.length - 1]
+      if (lastAssistantMsg && lastAssistantMsg.role === 'assistant' && lastAssistantMsg.actions && lastAssistantMsg.actions.length > 0) {
+        // Executar todas as ações pendentes
+        for (const action of lastAssistantMsg.actions) {
+          await processAction({ ...action, confirmed: true }, true)
+        }
+        setLoading(false)
+        return
+      }
+    }
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input.trim() }),
+        body: JSON.stringify({
+          message: userInput,
+          userId: currentConversationId || 'default'
+        }),
       })
 
       const data = await response.json()
@@ -201,10 +221,16 @@ export default function Chat() {
     }
   }
 
-  const processAction = async (action: ChatAction) => {
-    console.log('Processing action:', action)
+  const processAction = async (action: ChatAction, confirmedByUser = true) => {
+    console.log('Processing action:', action, 'Confirmed:', confirmedByUser)
 
     if (!action.data) return
+
+    // Se não foi confirmado pelo usuário, pede confirmação
+    if (!confirmedByUser && !action.confirmed) {
+      const confirmed = window.confirm(`Confirmar ação: ${action.type}?`)
+      if (!confirmed) return
+    }
 
     try {
       switch (action.type) {
@@ -215,9 +241,16 @@ export default function Chat() {
             value: action.data.value,
             timestamp: new Date().toISOString(),
             context,
-            note: action.data.note,
+            note: action.data.note || '',
           })
-          alert(`Glicose registrada: ${action.data.value} mg/dL (${settings.targetGlucose} mg/dL alvo)`)
+          // Adicionar mensagem de confirmação
+          const confirmMsg: Message = {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: `✅ Glicose registrada: ${action.data.value} mg/dL`,
+            timestamp: new Date().toISOString(),
+          }
+          setMessages(prev => [...prev, confirmMsg])
           break
         }
         case 'save_insulin': {
@@ -241,9 +274,16 @@ export default function Chat() {
             timestamp: new Date().toISOString(),
             glucoseValue: glucose,
             carbsValue: action.data.carbs,
-            note: action.data.note,
+            note: action.data.note || '',
           })
-          alert(`Insulina registrada: ${totalDose}U (correção: ${correctionDose}U, refeição: ${finalMealDose}U)`)
+          // Adicionar mensagem de confirmação
+          const confirmMsg: Message = {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: `✅ Insulina registrada: ${totalDose}U (correção: ${correctionDose}U, refeição: ${finalMealDose}U)`,
+            timestamp: new Date().toISOString(),
+          }
+          setMessages(prev => [...prev, confirmMsg])
           break
         }
         case 'save_food': {
@@ -254,17 +294,23 @@ export default function Chat() {
             totalCarbs,
             timestamp: new Date().toISOString(),
             mealType: action.data.mealType || 'lunch',
-            note: action.data.note,
+            note: action.data.note || '',
           })
-          alert(`Refeição registrada: ${totalCarbs}g de carboidratos`)
+          // Adicionar mensagem de confirmação
+          const confirmMsg: Message = {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: `✅ Refeição registrada: ${totalCarbs}g de carboidratos`,
+            timestamp: new Date().toISOString(),
+          }
+          setMessages(prev => [...prev, confirmMsg])
           break
         }
         default:
-          alert(`Ação: ${action.type}\nDados: ${JSON.stringify(action.data, null, 2)}`)
+          console.log('Ação desconhecida:', action.type)
       }
     } catch (error) {
       console.error('Erro ao processar ação:', error)
-      alert('Erro ao registrar. Tente manualmente.')
     }
   }
 

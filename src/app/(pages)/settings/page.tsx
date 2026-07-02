@@ -16,6 +16,7 @@ export default function SettingsPage() {
   const [importText, setImportText] = useState('')
   const [showImport, setShowImport] = useState(false)
   const [showExport, setShowExport] = useState(false)
+  const [saved, setSaved] = useState(true)
 
   useEffect(() => {
     setSettings(getSettings())
@@ -24,13 +25,24 @@ export default function SettingsPage() {
   const handleChange = (key: keyof UserSettings, value: string) => {
     const numValue = parseFloat(value.replace(',', '.'))
     if (!isNaN(numValue) && numValue > 0) {
-      setSettings((prev) => ({ ...prev, [key]: numValue }))
+      setSaved(false)
+      setSettings((prev) => {
+        const newSettings = { ...prev, [key]: numValue }
+        // Auto-save após 500ms sem mudanças
+        setTimeout(() => {
+          saveSettings(newSettings)
+          setSaved(true)
+          console.log('Settings auto-saved:', newSettings)
+        }, 500)
+        return newSettings
+      })
     }
   }
 
   const handleSave = () => {
     const updated = saveSettings(settings)
-    console.log('Settings salvas:', updated)
+    console.log('Settings salvas manualmente:', updated)
+    setSaved(true)
     setAlert({ type: 'success', message: 'Configurações salvas com sucesso!' })
     setTimeout(() => setAlert(null), 3000)
   }
@@ -130,9 +142,22 @@ export default function SettingsPage() {
             fontFamily: 'var(--font-display)',
             marginBottom: 'var(--spacing-lg)',
             letterSpacing: 'var(--letter-spacing-tight)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
           }}
         >
           Tratamento
+          {!saved && (
+            <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-primary)', animation: 'pulse-glow 1s ease-in-out infinite' }}>
+              Salvando...
+            </span>
+          )}
+          {saved && settings.correctionFactor !== 50 && (
+            <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-success)' }}>
+              ✓ Salvo
+            </span>
+          )}
         </h2>
 
         <div style={settingItemStyle}>

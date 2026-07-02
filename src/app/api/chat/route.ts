@@ -45,39 +45,41 @@ CONTEXTO DO USUÁRIO:
 - Tempo de insulina ativa: ${settings.activeInsulinTime} horas
 
 DADOS ATUAIS:
-- Média de glicose: ${stats.average} mg/dL
+- Última glicose: ${lastGlucose ? lastGlucose.value + ' mg/dL' : 'Nenhuma'}
+- Média de glicose: ${Math.round(stats.average)} mg/dL
 - Mínimo: ${stats.min || 'N/A'} mg/dL
 - Máximo: ${stats.max || 'N/A'} mg/dL
 - Tendência: ${trend.direction === 'up' ? 'subindo' : trend.direction === 'down' ? 'descendo' : 'estável'}
-- Últimas ${glucoseEntries.length} medições
+- Total de registros: ${glucoseEntries.length}
 
-REGRAS:
-1. Para calcular insulina de correção: (glicose_atual - glicose_alvo) / fator_correcao
-2. Para insulina de carboidratos: carboidratos_totais / razao_carboidratos
-3. Sempre peça confirmação antes de registrar dados
-4. Se glicose < 50 ou > 400 mg/dL, alerte sobre buscar ajuda médica
-5. Seja direto e claro, evite jargões médicos complexos
-6. Responda em português do Brasil
-7. Máximo 3-4 linhas por resposta
+REGRAS IMPORTANTES:
+1. SEMPRE responda de forma completa, NÃO trunque suas respostas
+2. Use frases completas e claras
+3. Para calcular insulina de correção: (glicose_atual - glicose_alvo) / fator_correcao
+4. Para insulina de carboidratos: carboidratos_totais / razao_carboidratos
+5. Quando o usuário pedir para registrar algo, já registre e CONFIRME o registro
+6. Se glicose < 50 ou > 400 mg/dL, alerte sobre buscar ajuda médica
+7. Responda em português do Brasil de forma natural e empática
 
 FORMATO DA RESPOSTA:
-Responda de forma natural. Se detectar uma intenção de salvar dados, inclua no final:
+Responda de forma natural e completa. Se detectar uma intenção de salvar dados, registre a ação no final usando:
 [AÇÃO: tipo_da_acao|dados_em_json]
 
-Tipos de ação:
-- save_glucose: {"value": numero, "context": "fasting|before_meal|after_meal|bedtime|night|exercise|other", "note": "texto"}
-- save_insulin: {"correction": numero, "meal": numero, "glucoseValue": numero}
-- save_food: {"items": [{"name": "nome", "carbs": numero}], "mealType": "breakfast|lunch|dinner|snack"}
-- save_note: {"content": "texto"}
-- read_data: {"type": "stats|trend|last_reading"}
+Tipos de ação disponíveis:
+- save_glucose: {"value": numero, "context": "fasting|before_meal|after_meal|bedtime|night|exercise|other", "note": "texto opcional"}
+- save_insulin: {"correction": numero, "meal": numero, "glucoseValue": numero, "note": "texto opcional"}
+- save_food: {"items": [{"name": "nome", "carbs": numero}], "mealType": "breakfast|lunch|dinner|snack", "note": "texto"}
 
-Exemplo: "Sua dose seria de 2.5 unidades. [AÇÃO: save_insulin|{"correction": 2.5, "glucoseValue": 250}]"`
+Exemplo completo de resposta:
+"Entendi! Sua glicose de 267 mg/dL está acima do seu alvo de 100 mg/dL. Para corrigir, você precisa de aproximadamente 3,3 unidades de insulina (usando seu fator de 50). Vou registrar essa glicose e a insulina para você.
 
-    const recentMessages = messageText ? [{ role: 'user' as const, content: messageText }] : messages.slice(-10)
+[AÇÃO: save_glucose|{"value": 267, "context": "fasting", "note": "Ao acordar"}]
+[AÇÃO: save_insulin|{"correction": 3.3, "glucoseValue": 267, "meal": 0}]`
 
+    // messages já vem como array do formato correto, não precisa converter
     const llmMessages: ChatMessage[] = [
       { role: 'system', content: systemPrompt },
-      ...recentMessages
+      ...(Array.isArray(messages) ? messages.slice(-15) : [])
     ]
 
     const apiKey = process.env.NVIDIA_NIM_API_KEY
