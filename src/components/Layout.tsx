@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { DashboardIcon, AIIcon, GlucoseIcon, FoodIcon, InsulinIcon, ChatIcon } from '@/components/SVGIcons'
+import { DashboardIcon, AIIcon, GlucoseIcon, FoodIcon, InsulinIcon, ChatIcon, ChartIcon, SettingsIcon } from '@/components/SVGIcons'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
@@ -10,8 +10,8 @@ const navItems = [
   { href: '/glucose', label: 'Glicose', icon: GlucoseIcon },
   { href: '/food', label: 'Alimentação', icon: FoodIcon },
   { href: '/insulin', label: 'Insulina', icon: InsulinIcon },
-  { href: '/charts', label: 'Gráficos', icon: DashboardIcon },
-  { href: '/settings', label: 'Ajustes', icon: '⚙' },
+  { href: '/charts', label: 'Gráficos', icon: ChartIcon },
+  { href: '/settings', label: 'Ajustes', icon: SettingsIcon },
 ] as const
 
 export default function Layout({ children }: { children: React.ReactNode }) {
