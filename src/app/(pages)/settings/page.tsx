@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, Button, Input, Alert, Toggle, Divider, Container } from '@/components/UI'
+import { Card, Button, Alert, Toggle, Divider, Container } from '@/components/UI'
 import { getSettings, saveSettings, exportData, importData, clearAllData } from '@/lib/storage'
 import { UserSettings } from '@/lib/types'
 
@@ -19,21 +19,25 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(true)
 
   useEffect(() => {
-    setSettings(getSettings())
+    const saved = getSettings()
+    setSettings(saved)
+    console.log('Settings carregadas:', saved)
   }, [])
 
   const handleChange = (key: keyof UserSettings, value: string) => {
     const numValue = parseFloat(value.replace(',', '.'))
+    console.log(`Mudando ${key} para ${numValue}`)
     if (!isNaN(numValue) && numValue > 0) {
       setSaved(false)
       setSettings((prev) => {
         const newSettings = { ...prev, [key]: numValue }
-        // Auto-save após 500ms sem mudanças
+        console.log('Novo settings:', newSettings)
+        // Auto-save após 800ms sem mudanças
         setTimeout(() => {
           saveSettings(newSettings)
           setSaved(true)
           console.log('Settings auto-saved:', newSettings)
-        }, 500)
+        }, 800)
         return newSettings
       })
     }
@@ -92,6 +96,34 @@ export default function SettingsPage() {
     marginBottom: 'var(--spacing-xl)',
     paddingBottom: 'var(--spacing-xl)',
     borderBottom: '1px solid var(--color-border)',
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '12px 14px',
+    borderRadius: 'var(--radius-md)',
+    border: '1px solid var(--color-border)',
+    backgroundColor: 'var(--color-bg-secondary)',
+    color: 'var(--color-text-primary)',
+    fontSize: 'var(--font-size-base)',
+    outline: 'none',
+    transition: 'all var(--transition-fast)',
+    fontFamily: 'var(--font-mono)',
+  }
+
+  const labelStyle: React.CSSProperties = {
+    display: 'block',
+    fontSize: 'var(--font-size-sm)',
+    fontWeight: 500,
+    color: 'var(--color-text-secondary)',
+    marginBottom: '6px',
+    letterSpacing: '-0.01em',
+  }
+
+  const hintStyle: React.CSSProperties = {
+    fontSize: 'var(--font-size-xs)',
+    color: 'var(--color-text-tertiary)',
+    marginTop: '6px',
   }
 
   return (
@@ -153,7 +185,7 @@ export default function SettingsPage() {
               Salvando...
             </span>
           )}
-          {saved && settings.correctionFactor !== 50 && (
+          {saved && (
             <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-success)' }}>
               ✓ Salvo
             </span>
@@ -161,43 +193,80 @@ export default function SettingsPage() {
         </h2>
 
         <div style={settingItemStyle}>
-          <Input
-            label="Glicose alvo (mg/dL)"
+          <label style={labelStyle}>Glicose alvo (mg/dL)</label>
+          <input
             type="number"
-            value={settings.targetGlucose.toString()}
+            value={settings.targetGlucose}
             onChange={(e) => handleChange('targetGlucose', e.target.value)}
-            hint="Valor recomendado: 100 mg/dL"
+            style={inputStyle}
+            onFocus={(e) => {
+              e.target.style.borderColor = 'var(--color-primary)'
+              e.target.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'var(--color-border)'
+              e.target.style.boxShadow = 'none'
+            }}
           />
+          <div style={hintStyle}>Valor recomendado: 100 mg/dL</div>
         </div>
 
         <div style={settingItemStyle}>
-          <Input
-            label="Fator de correção (mg/dL por U)"
+          <label style={labelStyle}>Fator de correção (mg/dL por U)</label>
+          <input
             type="number"
-            value={settings.correctionFactor.toString()}
+            value={settings.correctionFactor}
             onChange={(e) => handleChange('correctionFactor', e.target.value)}
-            hint="Quanto 1U de insulina reduz sua glicose"
+            style={inputStyle}
+            onFocus={(e) => {
+              e.target.style.borderColor = 'var(--color-primary)'
+              e.target.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'var(--color-border)'
+              e.target.style.boxShadow = 'none'
+            }}
           />
+          <div style={hintStyle}>Quanto 1U de insulina reduz sua glicose</div>
         </div>
 
         <div style={settingItemStyle}>
-          <Input
-            label="Proporção insulina:carbo (g por U)"
+          <label style={labelStyle}>Proporção insulina:carbo (g por U)</label>
+          <input
             type="number"
-            value={settings.carbRatio.toString()}
+            value={settings.carbRatio}
             onChange={(e) => handleChange('carbRatio', e.target.value)}
-            hint="Quantos gramas de carbo 1U cobre"
+            style={inputStyle}
+            onFocus={(e) => {
+              e.target.style.borderColor = 'var(--color-primary)'
+              e.target.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'var(--color-border)'
+              e.target.style.boxShadow = 'none'
+            }}
           />
+          <div style={hintStyle}>Quantos gramas de carbo 1U cobre</div>
         </div>
 
         <div style={settingItemStyle}>
-          <Input
-            label="Tempo de insulina ativa (horas)"
+          <label style={labelStyle}>Tempo de insulina ativa (horas)</label>
+          <input
             type="number"
-            value={settings.activeInsulinTime.toString()}
+            step="0.5"
+            value={settings.activeInsulinTime}
             onChange={(e) => handleChange('activeInsulinTime', e.target.value)}
-            hint="Duração do efeito da insulina"
+            style={inputStyle}
+            onFocus={(e) => {
+              e.target.style.borderColor = 'var(--color-primary)'
+              e.target.style.boxShadow = '0 0 0 3px var(--color-primary-light)'
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'var(--color-border)'
+              e.target.style.boxShadow = 'none'
+            }}
           />
+          <div style={hintStyle}>Duração do efeito da insulina</div>
         </div>
 
         <Button variant="primary" glow onClick={handleSave} style={{ width: '100%' }}>

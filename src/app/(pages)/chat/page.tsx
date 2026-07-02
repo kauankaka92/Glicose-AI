@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Card, Button, Badge } from '@/components/UI'
-import { ChatAction } from '@/lib/types'
+import { Card, Button } from '@/components/UI'
 import {
   getCurrentConversation,
   createConversation,
@@ -12,15 +11,12 @@ import {
   setCurrentConversationId,
   ChatConversation,
 } from '@/lib/chat-storage'
-import { saveGlucose, saveInsulin, saveFood, getSettings } from '@/lib/storage'
 
 interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
   timestamp: string
-  actions?: ChatAction[]
-  isTyping?: boolean
 }
 
 export default function Chat() {
@@ -29,7 +25,6 @@ export default function Chat() {
   const [loading, setLoading] = useState(false)
   const [conversations, setConversations] = useState<ChatConversation[]>([])
   const [currentConversationId, setCurrentId] = useState<string | null>(null)
-  const [showSidebar, setShowSidebar] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const typewriterRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -51,62 +46,30 @@ export default function Chat() {
   const loadConversations = () => {
     const convs = getConversations()
     setConversations(convs)
-
-    const current = getCurrentConversation()
-    if (current) {
+    if (convs.length > 0) {
+      const current = getCurrentConversation() || convs[0]
       setMessages(current.messages as Message[])
       setCurrentId(current.id)
-    } else if (convs.length > 0) {
-      setMessages(convs[0].messages as Message[])
-      setCurrentId(convs[0].id)
     }
   }
 
   const startNewConversation = () => {
-    const conversation = createConversation()
+    const conv = createConversation()
     setMessages([])
-    setCurrentId(conversation.id)
+    setCurrentId(conv.id)
     loadConversations()
-    setShowSidebar(false)
   }
 
-  const switchConversation = (id: string) => {
-    setCurrentId(id)
-    const conversation = getConversations().find((c) => c.id === id)
-    if (conversation) {
-      setMessages(conversation.messages as Message[])
-    }
-    setShowSidebar(false)
-  }
-
-  const handleDeleteConversation = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (conversations.length === 1) {
-      startNewConversation()
-    } else {
-      deleteConversation(id)
-      loadConversations()
-      if (id === currentConversationId) {
-        const remaining = conversations.filter((c) => c.id !== id)
-        if (remaining.length > 0) {
-          switchConversation(remaining[0].id)
-        }
-      }
-    }
-  }
-
-  const typeMessage = (fullText: string, messageId: string, actions?: ChatAction[]) => {
+  const typeMessage = (fullText: string, messageId: string) => {
     const chars = fullText.split('')
     let currentIndex = 0
-    const typingSpeed = 15
+    const typingSpeed = 20
 
     const assistantMessage: Message = {
       id: messageId,
       role: 'assistant',
       content: '',
       timestamp: new Date().toISOString(),
-      actions,
-      isTyping: true,
     }
 
     setMessages((prev) => [...prev, assistantMessage])
@@ -126,11 +89,6 @@ export default function Chat() {
           clearInterval(typewriterRef.current)
           typewriterRef.current = null
         }
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === messageId ? { ...msg, isTyping: false } : msg
-          )
-        )
       }
     }, typingSpeed)
   }
@@ -155,28 +113,13 @@ export default function Chat() {
       typewriterRef.current = null
     }
 
-    // Verificar se é uma confirmação do usuário
-    const isConfirmation = /^(sim|sure|yes|ok|okay|claro|com certeza|isso|exato)$/i.test(userInput)
-
-    // Se for confirmação e tiver ações pendentes, executa
-    if (isConfirmation && messages.length > 0) {
-      const lastAssistantMsg = messages[messages.length - 1]
-      if (lastAssistantMsg && lastAssistantMsg.role === 'assistant' && lastAssistantMsg.actions && lastAssistantMsg.actions.length > 0) {
-        // Executar todas as ações pendentes
-        for (const action of lastAssistantMsg.actions) {
-          await processAction({ ...action, confirmed: true }, true)
-        }
-        setLoading(false)
-        return
-      }
-    }
-
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: userInput,
+          messages: messages.map(m => ({ role: m.role, content: m.content })),
           userId: currentConversationId || 'default'
         }),
       })
@@ -185,30 +128,24 @@ export default function Chat() {
 
       if (data.success && data.data) {
         const assistantMessageId = (Date.now() + 1).toString()
-        typeMessage(data.data.response, assistantMessageId, data.data.actions)
+        typeMessage(data.data.response, assistantMessageId)
 
         if (currentConversationId) {
           addMessage(currentConversationId, userMessage)
-          const finalAssistantMessage: Message = {
-            id: assistantMessageId,
+          addMessage(currentConversationId, {
             role: 'assistant',
             content: data.data.response,
             timestamp: new Date().toISOString(),
-            actions: data.data.actions,
-          }
-          addMessage(currentConversationId, finalAssistantMessage)
+          })
         }
       } else {
         const errorMessageId = (Date.now() + 1).toString()
-        typeMessage(
-          data.error || 'Desculpe, ocorreu um erro. Tente novamente.',
-          errorMessageId
-        )
+        typeMessage(data.error || 'Erro. Tente novamente.', errorMessageId)
       }
     } catch (error) {
-      console.error('Erro ao enviar mensagem:', error)
+      console.error('Erro:', error)
       const errorMessageId = (Date.now() + 1).toString()
-      typeMessage('Desculpe, ocorreu um erro. Tente novamente.', errorMessageId)
+      typeMessage('Erro de conexão. Verifique sua internet.', errorMessageId)
     } finally {
       setLoading(false)
     }
@@ -219,111 +156,6 @@ export default function Chat() {
       e.preventDefault()
       sendMessage()
     }
-  }
-
-  const processAction = async (action: ChatAction, confirmedByUser = true) => {
-    console.log('Processing action:', action, 'Confirmed:', confirmedByUser)
-
-    if (!action.data) return
-
-    // Se não foi confirmado pelo usuário, pede confirmação
-    if (!confirmedByUser && !action.confirmed) {
-      const confirmed = window.confirm(`Confirmar ação: ${action.type}?`)
-      if (!confirmed) return
-    }
-
-    try {
-      switch (action.type) {
-        case 'save_glucose': {
-          const settings = getSettings()
-          const context = action.data.context || guessContext(action.data.note)
-          const entry = saveGlucose({
-            value: action.data.value,
-            timestamp: new Date().toISOString(),
-            context,
-            note: action.data.note || '',
-          })
-          // Adicionar mensagem de confirmação
-          const confirmMsg: Message = {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: `✅ Glicose registrada: ${action.data.value} mg/dL`,
-            timestamp: new Date().toISOString(),
-          }
-          setMessages(prev => [...prev, confirmMsg])
-          break
-        }
-        case 'save_insulin': {
-          const settings = getSettings()
-          const glucose = action.data.glucoseValue || 0
-          const correctionDose = action.data.correction || 0
-          const mealDose = action.data.meal || 0
-
-          // Calcular dose de refeição se tiver carbs
-          let finalMealDose = mealDose
-          if (action.data.carbs && settings.carbRatio) {
-            finalMealDose = Math.round((action.data.carbs / settings.carbRatio) * 10) / 10
-          }
-
-          const totalDose = Math.round((correctionDose + finalMealDose) * 10) / 10
-
-          saveInsulin({
-            correction: correctionDose,
-            meal: finalMealDose,
-            total: totalDose,
-            timestamp: new Date().toISOString(),
-            glucoseValue: glucose,
-            carbsValue: action.data.carbs,
-            note: action.data.note || '',
-          })
-          // Adicionar mensagem de confirmação
-          const confirmMsg: Message = {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: `✅ Insulina registrada: ${totalDose}U (correção: ${correctionDose}U, refeição: ${finalMealDose}U)`,
-            timestamp: new Date().toISOString(),
-          }
-          setMessages(prev => [...prev, confirmMsg])
-          break
-        }
-        case 'save_food': {
-          const items = action.data.items || []
-          const totalCarbs = items.reduce((sum: number, item: any) => sum + (item.carbs || 0), 0)
-          saveFood({
-            items,
-            totalCarbs,
-            timestamp: new Date().toISOString(),
-            mealType: action.data.mealType || 'lunch',
-            note: action.data.note || '',
-          })
-          // Adicionar mensagem de confirmação
-          const confirmMsg: Message = {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: `✅ Refeição registrada: ${totalCarbs}g de carboidratos`,
-            timestamp: new Date().toISOString(),
-          }
-          setMessages(prev => [...prev, confirmMsg])
-          break
-        }
-        default:
-          console.log('Ação desconhecida:', action.type)
-      }
-    } catch (error) {
-      console.error('Erro ao processar ação:', error)
-    }
-  }
-
-  const guessContext = (note?: string): 'fasting' | 'before_meal' | 'after_meal' | 'bedtime' | 'night' | 'exercise' | 'other' => {
-    if (!note) return 'other'
-    const text = note.toLowerCase()
-    if (text.includes('jejum') || text.includes('acordar')) return 'fasting'
-    if (text.includes('antes') || text.includes('pré')) return 'before_meal'
-    if (text.includes('depois') || text.includes('pós') || text.includes('após')) return 'after_meal'
-    if (text.includes('dormir') || text.includes('cama')) return 'bedtime'
-    if (text.includes('madrugada') || text.includes('noite')) return 'night'
-    if (text.includes('exercício') || text.includes('treino') || text.includes('atividade')) return 'exercise'
-    return 'other'
   }
 
   return (
@@ -358,7 +190,7 @@ export default function Chat() {
               marginTop: 'var(--spacing-xs)',
             }}
           >
-            Cálculos e registros conversacionais
+            Ex: "glicose 267 ao acordar" ou "tomei 4 unidades"
           </p>
         </div>
         <Button
@@ -393,28 +225,15 @@ export default function Chat() {
               color: 'var(--color-text-secondary)',
             }}
           >
-            <div
-              style={{
-                textAlign: 'center',
-                padding: 'var(--spacing-2xl)',
-              }}
-            >
-              <div
-                style={{
-                  fontSize: '56px',
-                  marginBottom: 'var(--spacing-lg)',
-                  opacity: 0.2,
-                }}
-              >
+            <div style={{ textAlign: 'center', padding: 'var(--spacing-2xl)' }}>
+              <div style={{ fontSize: '56px', marginBottom: 'var(--spacing-lg)', opacity: 0.2 }}>
                 ◐
               </div>
-              <p
-                style={{
-                  fontSize: 'var(--font-size-base)',
-                  color: 'var(--color-text-tertiary)',
-                }}
-              >
-                Comece uma conversa para calcular insulina<br />ou registrar glicoses de forma inteligente
+              <p style={{ fontSize: 'var(--font-size-base)', color: 'var(--color-text-tertiary)' }}>
+                Digite sua glicose ou insulina para registrar automaticamente
+              </p>
+              <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 'var(--spacing-sm)' }}>
+                Ex: "minha glicose está 267" ou "tomei 3 unidades"
               </p>
             </div>
           </div>
@@ -439,18 +258,10 @@ export default function Chat() {
                   message.role === 'user'
                     ? '1px solid rgba(0, 255, 157, 0.2)'
                     : '1px solid var(--color-border)',
-                animation: 'fadeIn 0.3s ease-out',
               }}
             >
               {message.role === 'assistant' && (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    marginBottom: '10px',
-                  }}
-                >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                   <span
                     style={{
                       width: '20px',
@@ -462,147 +273,36 @@ export default function Chat() {
                       justifyContent: 'center',
                       fontSize: '10px',
                       color: 'var(--color-text-inverse)',
-                      animation: message.isTyping ? 'biometric-pulse 1s ease-in-out infinite' : 'none',
                     }}
                   >
                     ◐
                   </span>
-                  <span
-                    style={{
-                      fontSize: 'var(--font-size-xs)',
-                      color: 'var(--color-text-secondary)',
-                      fontWeight: 600,
-                    }}
-                  >
+                  <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)', fontWeight: 600 }}>
                     Glicose AI
                   </span>
-                  {message.isTyping && (
-                    <span
-                      style={{
-                        fontSize: 'var(--font-size-xs)',
-                        color: 'var(--color-primary)',
-                        animation: 'pulse-glow 1s ease-in-out infinite',
-                      }}
-                    >
-                      digitando...
-                    </span>
-                  )}
                 </div>
               )}
               <p
                 style={{
                   fontSize: 'var(--font-size-base)',
-                  color:
-                    message.role === 'user'
-                      ? 'var(--color-text-primary)'
-                      : 'var(--color-text-secondary)',
+                  color: message.role === 'user' ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
                   lineHeight: 'var(--line-height-relaxed)',
-                  fontFamily: message.role === 'assistant' && message.isTyping ? 'var(--font-mono)' : 'inherit',
+                  whiteSpace: 'pre-wrap',
                 }}
               >
                 {message.content}
-                {message.isTyping && (
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      width: '2px',
-                      height: '1em',
-                      backgroundColor: 'var(--color-primary)',
-                      marginLeft: '2px',
-                      animation: 'blink 1s step-end infinite',
-                    }}
-                  />
-                )}
               </p>
-              {message.actions && message.actions.length > 0 && !message.isTyping && (
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: 'var(--spacing-sm)',
-                    marginTop: 'var(--spacing-md)',
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  {message.actions.map((action, index) => (
-                    <button
-                      key={index}
-                      onClick={() => processAction(action)}
-                      style={{
-                        padding: '6px 12px',
-                        backgroundColor: 'var(--color-primary-light)',
-                        color: 'var(--color-primary)',
-                        border: '1px solid rgba(0, 255, 157, 0.3)',
-                        borderRadius: 'var(--radius-md)',
-                        fontSize: 'var(--font-size-xs)',
-                        fontWeight: 500,
-                        cursor: 'pointer',
-                        transition: 'all var(--transition-fast)',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--color-primary)'
-                        e.currentTarget.style.color = 'var(--color-bg)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--color-primary-light)'
-                        e.currentTarget.style.color = 'var(--color-primary)'
-                      }}
-                    >
-                      {action.label || action.type}
-                    </button>
-                  ))}
-                </div>
-              )}
             </Card>
           </div>
         ))}
 
-        {loading && messages.filter((m) => m.isTyping).length === 0 && (
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'flex-start',
-            }}
-          >
-            <Card
-              style={{
-                backgroundColor: 'var(--color-bg-secondary)',
-                border: '1px solid var(--color-border)',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
-              >
-                <div
-                  style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor: 'var(--color-primary)',
-                    animation: 'pulse-glow 1s ease-in-out infinite',
-                  }}
-                />
-                <div
-                  style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor: 'var(--color-primary)',
-                    animation: 'pulse-glow 1s ease-in-out infinite 0.2s',
-                  }}
-                />
-                <div
-                  style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor: 'var(--color-primary)',
-                    animation: 'pulse-glow 1s ease-in-out infinite 0.4s',
-                  }}
-                />
+        {loading && (
+          <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <Card style={{ backgroundColor: 'var(--color-bg-secondary)', padding: 'var(--spacing-md)' }}>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-primary)', animation: 'pulse-glow 1s ease-in-out infinite' }} />
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-primary)', animation: 'pulse-glow 1s ease-in-out infinite 0.2s' }} />
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-primary)', animation: 'pulse-glow 1s ease-in-out infinite 0.4s' }} />
               </div>
             </Card>
           </div>
@@ -623,7 +323,7 @@ export default function Chat() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="Ex: registrar glicose 120 antes do almoço"
+          placeholder='Ex: "glicose 150 antes do almoço"'
           style={{
             flex: 1,
             padding: '14px 18px',
