@@ -14,6 +14,25 @@ import { GLUCOSE_STATUS, getGlucoseStatus, getGlucoseStatusLabel } from '@/lib/t
  * 6. Retornar resposta curta ao usuário
  */
 
+/**
+ * STREAM DE EVENTOS CLÍNICOS
+ * Cada input do usuário pode gerar múltiplos eventos independentes
+ */
+interface ClinicalEvent {
+  type: 'glucose_event' | 'food_event' | 'insulin_context'
+  value?: number
+  items?: string[]
+  context?: string
+  meal?: string
+  order: number
+  timestamp?: string
+}
+
+interface EventStream {
+  events: ClinicalEvent[]
+  summary: string
+}
+
 interface ChatEvent {
   event_type: 'user_input'
   actions: string[]
@@ -29,6 +48,7 @@ interface ChatEvent {
     total: number
   }
   ui_update: boolean
+  stream?: EventStream
 }
 
 export async function POST(request: NextRequest) {
@@ -49,78 +69,95 @@ export async function POST(request: NextRequest) {
     const settings = clientSettings || getSettings()
 
     // ============================================
-    // 1. EXTRATOR DE GLICOSE - REVISADO
+    // 1. STREAM DE EVENTOS - EXTRACAO MULTIPLA
+    // ============================================
+    const events: ClinicalEvent[] = []
+    let eventOrder = 0
+
+    // ============================================
+    // 1A. EXTRATOR DE GLICOSE - STREAM COMPLETO
     // ============================================
     const glucosePatterns = [
-      /glicose\s*[:\-]?\s*(\d{2,3})/i,
-      /glicemia\s*[:\-]?\s*(\d{2,3})/i,
-      /(?: med(?:ir|i))\s*(?:de\s*)?(?:glicose|glicemia)?\s*(\d{2,3})/i,
-      /(\d{2,3})\s*(?:de\s*)?glicose/i,
-      /(\d{2,3})\s*(?:de\s*)?glicemia/i,
-      /(\d{2,3})\s*mg(?:\/dl)?/i,
-      /pra\s*(\d{2,3})\s*(?:de\s*)?glicose/i,
-      // Padrão: "antes do almoco: 183" ou "apos cafe: 200" - DOIS NUMEROS
-      /(?:antes|depois|apos|pos|em jejum|jejum)\s+(?:do|da|de)?\s*(?:almoco|almoço|cafe|café|janta|jantar|refeicao|refeição)\s*[:\-]?\s*(\d{2,3})/i,
-      // Padrão: "apos cafe da manha: 324" - com "da" no meio
-      /(?:apos|depois)\s+(?:o|a|os|as)?\s*(?:cafe|café|almoco|almoço|janta|jantar)\s+(?:da|do|de)?\s*(manha|manhã|tarde|noite)?\s*[:\-]?\s*(\d{2,3})/i,
-      // Padrão: número no final da frase após contexto
-      /(?:ao\s+acordar|antes\s+do|depois\s+do|apos\s+o|em\s+jejum)\s+(?:.*?)(\d{2,3})\s*(?:mg|mg\/dl)?$/i,
-      // Padrão simples: apenas número seguido de contexto
-      /^(\d{2,3})\s+(?:ao\s+acordar|antes\s+|apos\s+|depois\s+|em\s+jejum|jejum)/i,
-      // PADRÃO EXTRA: qualquer numero de 3 digitos após 2 ou mais palavras
-      /\b(?:ao\s+acordar|antes\s+.*|apos\s+.*|depois\s+.*|em\s+jejum|jejum)\s*[:\-.]?\s*(\d{3})\b/i,
+      /glicose\s*[:\-]?\s*(\d{2,3})/gi,
+      /glicemia\s*[:\-]?\s*(\d{2,3})/gi,
+      /(?: med(?:ir|i))\s*(?:de\s*)?(?:glicose|glicemia)?\s*(\d{2,3})/gi,
+      /(\d{2,3})\s*(?:de\s*)?glicose/gi,
+      /(\d{2,3})\s*(?:de\s*)?glicemia/gi,
+      /(\d{2,3})\s*mg(?:\/dl)?/gi,
+      /pra\s*(\d{2,3})\s*(?:de\s*)?glicose/gi,
+      /(?:antes|depois|apos|pos|em jejum|jejum)\s+(?:do|da|de)?\s*(?:almoco|almoço|cafe|café|janta|jantar|refeicao|refeição)\s*[:\-]?\s*(\d{2,3})/gi,
+      /(?:apos|depois)\s+(?:o|a|os|as)?\s*(?:cafe|café|almoco|almoço|janta|jantar)\s+(?:da|do|de)?\s*(manha|manhã|tarde|noite)?\s*[:\-]?\s*(\d{2,3})/gi,
+      /(?:ao\s+acordar|antes\s+do|depois\s+do|apos\s+o|em\s+jejum)\s+(?:.*?)(\d{2,3})\s*(?:mg|mg\/dl)?$/gim,
+      /^(\d{2,3})\s+(?:ao\s+acordar|antes\s+|apos\s+|depois\s+|em\s+jejum|jejum)/gim,
+      /\b(?:ao\s+acordar|antes\s+.*|apos\s+.*|depois\s+.*|em\s+jejum|jejum)\s*[:\-.]?\s*(\d{3})\b/gi,
     ]
 
-    let glucoseValue: number | null = null
+    // Extrair TODAS as glicoses do texto
+    const allGlucoseMatches: { value: number; context: string; index: number }[] = []
+
+    // Padroes com contexto
+    const contextGlucosePatterns = [
+      { pattern: /(?:antes\s+(?:do|da|de)\s*(?:almoco|almoço|janta|jantar|cafe|café|refeicao|refeição))\s*[:\-]?\s*(\d{2,3})/gi, context: 'before_meal' },
+      { pattern: /(?:depois\s+(?:do|da|de)\s*(?:almoco|almoço|janta|jantar|cafe|café|refeicao|refeição))\s*[:\-]?\s*(\d{2,3})/gi, context: 'after_meal' },
+      { pattern: /(?:apos\s+(?:o|a|os|as)\s*(?:almoco|almoço|janta|jantar|cafe|café))\s*[:\-]?\s*(\d{2,3})/gi, context: 'after_meal' },
+      { pattern: /(?:ao\s+acordar|em\s+jejum|jejum)\s*[:\-]?\s*(\d{2,3})/gi, context: 'fasting' },
+      { pattern: /(?:antes\s+de\s+dormir|ao\s+dormir)\s*[:\-]?\s*(\d{2,3})/gi, context: 'bedtime' },
+    ]
+
+    for (const { pattern, context } of contextGlucosePatterns) {
+      let match
+      while ((match = pattern.exec(message)) !== null) {
+        const value = parseInt(match[1], 10)
+        if (value >= 20 && value <= 600) {
+          allGlucoseMatches.push({ value, context, index: match.index })
+        }
+      }
+    }
+
+    // Padroes gerais de glicose
     for (const pattern of glucosePatterns) {
-      const match = message.match(pattern)
-      if (match) {
-        glucoseValue = parseInt(match[1] || match[2], 10)
-        console.log('[MOTOR DE DADOS] Glicose detectada:', glucoseValue, 'pattern:', pattern.toString())
-        if (glucoseValue >= 20 && glucoseValue <= 600) break
+      let match
+      while ((match = pattern.exec(message)) !== null) {
+        const value = parseInt(match[1], 10)
+        if (value >= 20 && value <= 600) {
+          // Verificar se já não foi adicionado
+          const exists = allGlucoseMatches.some(m => m.value === value && Math.abs(m.index - match!.index) < 5)
+          if (!exists) {
+            // Determinar contexto da frase
+            const beforeText = message.substring(0, match.index).toLowerCase()
+            let ctx = ''
+
+            if (beforeText.includes('antes')) ctx = 'before_meal'
+            else if (beforeText.includes('depois') || beforeText.includes('apos')) ctx = 'after_meal'
+            else if (beforeText.includes('jejum') || beforeText.includes('acordar')) ctx = 'fasting'
+            else if (beforeText.includes('manha') || beforeText.includes('manhã')) ctx = 'breakfast'
+            else if (beforeText.includes('tarde')) ctx = 'lunch'
+            else if (beforeText.includes('noite')) ctx = 'dinner'
+
+            allGlucoseMatches.push({ value, context: ctx, index: match.index })
+          }
+        }
       }
     }
 
-    // Fallback: procurar qualquer numero de 3 digitos isolado na frase
-    if (!glucoseValue) {
-      const anyNumberMatch = message.match(/\b(\d{3})\b\s*(?:ao|antes|apos|depois|jejum|manha|manhã|tarde|noite)/i)
-      if (anyNumberMatch) {
-        glucoseValue = parseInt(anyNumberMatch[1], 10)
-        console.log('[MOTOR DE DADOS] Glicose (fallback):', glucoseValue)
-      }
+    // Ordenar por posição no texto e criar eventos
+    allGlucoseMatches.sort((a, b) => a.index - b.index)
+
+    for (const { value, context: ctx, index } of allGlucoseMatches) {
+      eventOrder++
+      events.push({
+        type: 'glucose_event',
+        value,
+        context: ctx || undefined,
+        order: eventOrder,
+        timestamp: new Date().toISOString()
+      })
+      console.log('[STREAM DE EVENTOS] Glicose detectada:', value, 'contexto:', ctx, 'ordem:', eventOrder)
     }
 
     // ============================================
-    // 2. EXTRATOR DE CONTEXTO
+    // 2. EXTRATOR DE ALIMENTOS - STREAM COMPLETO
     // ============================================
-    let context: string | undefined = undefined
-
-    // Prioridade: contextos compostos primeiro
-    if (text.includes('antes') && (text.includes('almoço') || text.includes('almoco') || text.includes('janta') || text.includes('jantar') || text.includes('café') || text.includes('cafe') || text.includes('refeição') || text.includes('refeicao') || text.includes('comer'))) {
-      context = 'before_meal'
-    } else if (text.includes('depois') || text.includes('após') || text.includes('apos') || text.includes('pós') || text.includes('pos')) {
-      context = 'after_meal'
-    } else if (text.includes('acordar') || text.includes('acordei') || text.includes('jejum')) {
-      context = 'fasting'
-    } else if (text.includes('dormir') || text.includes('cama') || text.includes('noite')) {
-      context = 'bedtime'
-    } else if (text.includes('exercício') || text.includes('exercicio') || text.includes('treino') || text.includes('academia')) {
-      context = 'exercise'
-    } else if (text.includes('almoço') || text.includes('almoçando') || text.includes('almocando')) {
-      context = 'lunch'
-    } else if (text.includes('janta') || text.includes('jantar')) {
-      context = 'dinner'
-    } else if (text.includes('café') || text.includes('cafe') || text.includes('desjejum')) {
-      context = 'breakfast'
-    } else if (text.includes('manhã') || text.includes('manha')) {
-      context = 'breakfast'
-    }
-
-    // ============================================
-    // 3. EXTRATOR DE ALIMENTOS - REVISADO
-    // ============================================
-
-    // Palavras-chave de alimentos VALIDAS
     const foodKeywords = [
       'arroz', 'feijão', 'feijao', 'carne', 'frango', 'peixe', 'ovo', 'ovos',
       'salada', 'verdura', 'legume', 'fruta', 'banana', 'maçã', 'maca', 'laranja',
@@ -136,7 +173,6 @@ export async function POST(request: NextRequest) {
       'pedacos', 'pedaço', 'pedaços', 'fatia', 'fatias', 'copo', 'copos', 'xicara', 'xícaras'
     ]
 
-    // Palavras para EXCLUIR (não são alimentos)
     const excludeWords = [
       'junto', 'tudo', 'isso', 'aquilo', 'nada', 'mais', 'nao', 'não', 'sim',
       'que', 'com', 'para', 'por', 'de', 'do', 'da', 'dos', 'das', 'um', 'uma',
@@ -149,54 +185,47 @@ export async function POST(request: NextRequest) {
       'unidades', 'u', 'ui', 'correea', 'corri'
     ]
 
-    // Padrões que indicam descrição de refeição
-    const mealPatterns = [
-      /(?:comi|comedo|almocar|almocei|jantei|jantar|lanchei|cafetei|café da manhã|cafe da manha)\s+(.+)/i,
-      /(?:tomei|bebi|consume|consumi)\s+(.+)/i,
-      /(?:para|no|do|da)\s+(?:cafe|café|almoco|almoço|janta|jantar|lanche)\s*[:\-]?\s*(.+)/i,
+    // Segmentar texto por marcadores de refeição
+    const mealSegmentPatterns = [
+      { pattern: /(?:cafe|café|café da manhã|cafe da manha)\s*[:\-]?\s*(.+?)(?=(?:almoco|almoço|janta|jantar|$))/gi, meal: 'breakfast' },
+      { pattern: /(?:almoco|almoço)\s*[:\-]?\s*(.+?)(?=(?:janta|jantar|cafe|café|$))/gi, meal: 'lunch' },
+      { pattern: /(?:janta|jantar)\s*[:\-]?\s*(.+?)(?=(?:cafe|café|almoco|almoço|$))/gi, meal: 'dinner' },
+      { pattern: /(?:comi|almocei|jantei|lanchiei)\s+(.+?)(?=\.|$)/gi, meal: 'general' },
+      { pattern: /(?:tomei|bebi)\s+(.+?)(?=\.|$)/gi, meal: 'general' },
     ]
 
-    let foods: string[] = []
-    let carbsEstimate: number | undefined = undefined
+    const allFoods: { items: string[]; meal: string; carbs: number }[] = []
 
-    // Tentar capturar descrição de refeição
-    let mealText = ''
-    for (const pattern of mealPatterns) {
-      const match = message.match(pattern)
-      if (match) {
-        mealText = match[1].toLowerCase()
-        console.log('[MOTOR DE DADOS] Texto de alimento capturado:', mealText)
-        break
+    for (const { pattern, meal } of mealSegmentPatterns) {
+      let match
+      while ((match = pattern.exec(message)) !== null) {
+        const segment = match[1].toLowerCase()
+        const foodsInSegment = foodKeywords.filter(kw => segment.includes(kw))
+          .filter(f => !excludeWords.includes(f))
+
+        if (foodsInSegment.length > 0) {
+          const uniqueFoods = [...new Set(foodsInSegment)]
+          const carbs = estimateCarbs(uniqueFoods, segment)
+          allFoods.push({ items: uniqueFoods, meal, carbs })
+          console.log('[STREAM DE EVENTOS] Refeição detectada:', meal, 'alimentos:', uniqueFoods, 'carbs:', carbs)
+        }
       }
     }
 
-    if (mealText) {
-      // Extrair palavras-chave de alimentos do texto
-      foods = foodKeywords.filter(kw => mealText.includes(kw))
-
-      // Filtrar palavras excluídas
-      foods = foods.filter(f => !excludeWords.includes(f))
-
-      // Remover duplicatas
-      foods = [...new Set(foods)]
-
-      // Se não encontrou keywords, tenta extrair substantivos
-      if (foods.length === 0) {
-        const candidates = mealText
-          .replace(/[.,:;]/g, ' ')
-          .split(/[\s]+/)
-          .filter(w => w.length > 3 && !excludeWords.includes(w) && !/^\d+$/.test(w))
-        foods = candidates.slice(0, 5)
-      }
-
-      if (foods.length > 0) {
-        carbsEstimate = estimateCarbs(foods, mealText)
-        console.log('[MOTOR DE DADOS] Alimentos detectados:', foods, 'carbs:', carbsEstimate)
-      }
+    // Criar eventos de alimento
+    for (const { items, meal, carbs } of allFoods) {
+      eventOrder++
+      events.push({
+        type: 'food_event',
+        items,
+        meal,
+        order: eventOrder,
+        timestamp: new Date().toISOString()
+      })
     }
 
     // ============================================
-    // 3.5. EXTRATOR DE INSULINA EXPLÍCITA
+    // 3. EXTRATOR DE INSULINA EXPLÍCITA
     // ============================================
     let explicitInsulin: number | null = null
     const insulinPatterns = [
@@ -215,16 +244,31 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Dados consolidados para calculo (ultima glicose detectada)
+    const lastGlucose = events.filter(e => e.type === 'glucose_event').pop()
+    const firstFood = events.find(e => e.type === 'food_event')
+    const glucoseValue = lastGlucose?.value || null
+    const foods = firstFood?.items || []
+    const carbsEstimate = firstFood ? (firstFood as any).carbs : undefined
+
     // ============================================
-    // 4. MONTAR EVENTO ESTRUTURADO
+    // 4. MONTAR EVENTO ESTRUTURADO COM STREAM
     // ============================================
     const event: ChatEvent = {
       event_type: 'user_input',
       actions: [],
       data: {
-        context
+        context: lastGlucose?.context
       },
       ui_update: true
+    }
+
+    // Adicionar stream de eventos ao evento
+    if (events.length > 0) {
+      event.stream = {
+        events,
+        summary: `${events.filter(e => e.type === 'glucose_event').length} glicose(s), ${events.filter(e => e.type === 'food_event').length} refeic(oes)`
+      }
     }
 
     if (glucoseValue) {
@@ -272,26 +316,42 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================
-    // 6. SALVAR DADOS NO STORAGE
+    // 6. SALVAR DADOS NO STORAGE - STREAM
     // ============================================
     const savedData: Record<string, unknown> = {}
+    const savedEvents: any[] = []
 
-    if (glucoseValue) {
-      savedData.glucose = saveGlucose({
-        value: glucoseValue,
-        timestamp: new Date().toISOString(),
-        context: context as any,
+    // Salvar TODAS as glicoses detectadas
+    for (const evt of events.filter(e => e.type === 'glucose_event')) {
+      const saved = saveGlucose({
+        value: evt.value!,
+        timestamp: evt.timestamp || new Date().toISOString(),
+        context: evt.context as any,
         note: message
       })
+      savedEvents.push({ type: 'glucose', ...saved })
     }
 
-    if (foods.length > 0) {
-      savedData.food = saveFood({
-        items: foods.map(name => ({ name, carbs: Math.round(carbsEstimate! / foods.length) })),
-        totalCarbs: carbsEstimate || 0,
-        timestamp: new Date().toISOString(),
-        mealType: mapContextToMealType(context)
+    if (events.some(e => e.type === 'glucose_event')) {
+      savedData.glucose = savedEvents.filter(e => e.type === 'glucose')
+    }
+
+    // Salvar TODAS as refeicoes detectadas
+    const savedFoods: any[] = []
+    for (const evt of events.filter(e => e.type === 'food_event')) {
+      const foodEvent = evt as ClinicalEvent & { items: string[], meal: string }
+      const totalCarbs = estimateCarbs(foodEvent.items, '')
+      const saved = saveFood({
+        items: foodEvent.items.map(name => ({ name, carbs: Math.round(totalCarbs / foodEvent.items.length) })),
+        totalCarbs,
+        timestamp: evt.timestamp || new Date().toISOString(),
+        mealType: (foodEvent.meal === 'breakfast' || foodEvent.meal === 'lunch' || foodEvent.meal === 'dinner') ? foodEvent.meal : undefined
       })
+      savedFoods.push({ type: 'food', ...saved })
+    }
+
+    if (savedFoods.length > 0) {
+      savedData.food = savedFoods
     }
 
     if (event.insulin && event.insulin.total > 0) {
@@ -316,18 +376,24 @@ export async function POST(request: NextRequest) {
     // ============================================
     let response = ''
 
-    if (glucoseValue) {
-      const status = getGlucoseStatusLabel(glucoseValue)
+    const glucoseEvents = events.filter(e => e.type === 'glucose_event')
+    const foodEvents = events.filter(e => e.type === 'food_event')
+
+    if (glucoseEvents.length > 0) {
+      const lastEvent = glucoseEvents[glucoseEvents.length - 1]
+      const status = getGlucoseStatusLabel(lastEvent.value!)
       if (event.insulin && event.insulin.total > 0) {
-        response = `✔ Glicose ${glucoseValue} registrada. Dose sugerida: ${event.insulin.total}U.`
+        response = `✔ ${glucoseEvents.length} glicose(s) registrada(s). Última: ${lastEvent.value} (${status}). Dose sugerida: ${event.insulin.total}U.`
       } else {
-        response = `✔ Glicose ${glucoseValue} registrada. Status: ${status}.`
+        response = `✔ ${glucoseEvents.length} glicose(s) registrada(s). Última: ${lastEvent.value} (${status}).`
       }
     }
 
-    if (foods.length > 0) {
+    if (foodEvents.length > 0) {
       if (response) response += ' '
-      response += `✔ Refeição salva: ${foods.slice(0, 3).join(', ')}${foods.length > 3 ? '...' : ''}. ${carbsEstimate}g de carboidratos.`
+      const allFoods = foodEvents.flatMap(e => e.items || [])
+      const displayFoods = [...new Set(allFoods)].slice(0, 3)
+      response += `✔ ${foodEvents.length} refeic(oes) salva(s): ${displayFoods.join(', ')}${allFoods.length > 3 ? '...' : ''}.`
     }
 
     if (!response) {
@@ -336,6 +402,7 @@ export async function POST(request: NextRequest) {
 
     console.log('[MOTOR DE DADOS] Resposta:', response)
     console.log('[MOTOR DE DADOS] actions array:', event.actions, 'length:', event.actions.length)
+    console.log('[MOTOR DE DADOS] Stream de eventos:', events.length, 'eventos:', JSON.stringify(events, null, 2))
 
     // ============================================
     // 9. RETORNAR EVENTO + RESPOSTA
