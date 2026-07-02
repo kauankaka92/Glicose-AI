@@ -32,7 +32,12 @@ export function saveGlucose(entry: Omit<GlucoseEntry, 'id'>): GlucoseEntry {
   const entries = getGlucoseEntries()
   entries.push(newEntry)
   const storage = getLocalStorage()
-  if (storage) storage.setItem(STORAGE_KEYS.GLUCOSE, JSON.stringify(entries))
+  if (storage) {
+    storage.setItem(STORAGE_KEYS.GLUCOSE, JSON.stringify(entries))
+    console.log('[storage.ts] Glucose saved:', newEntry, 'Total entries:', entries.length)
+  } else {
+    console.warn('[storage.ts] localStorage not available')
+  }
   return newEntry
 }
 
@@ -65,7 +70,12 @@ export function saveFood(entry: Omit<FoodEntry, 'id'>): FoodEntry {
   const entries = getFoodEntries()
   entries.push(newEntry)
   const storage = getLocalStorage()
-  if (storage) storage.setItem(STORAGE_KEYS.FOOD, JSON.stringify(entries))
+  if (storage) {
+    storage.setItem(STORAGE_KEYS.FOOD, JSON.stringify(entries))
+    console.log('[storage.ts] Food saved:', newEntry, 'Total entries:', entries.length)
+  } else {
+    console.warn('[storage.ts] localStorage not available')
+  }
   return newEntry
 }
 
@@ -98,7 +108,12 @@ export function saveInsulin(entry: Omit<InsulinEntry, 'id'>): InsulinEntry {
   const entries = getInsulinEntries()
   entries.push(newEntry)
   const storage = getLocalStorage()
-  if (storage) storage.setItem(STORAGE_KEYS.INSULIN, JSON.stringify(entries))
+  if (storage) {
+    storage.setItem(STORAGE_KEYS.INSULIN, JSON.stringify(entries))
+    console.log('[storage.ts] Insulin saved:', newEntry, 'Total entries:', entries.length)
+  } else {
+    console.warn('[storage.ts] localStorage not available')
+  }
   return newEntry
 }
 
@@ -139,8 +154,13 @@ export function saveSettings(settings: Partial<UserSettings>): UserSettings {
   const current = getSettings()
   const updated = { ...current, ...settings }
   const storage = getLocalStorage()
-  if (storage) storage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated))
-  return updated
+  if (storage) {
+    storage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated))
+    console.log('[storage.ts] Settings saved:', updated)
+    return updated
+  }
+  console.warn('[storage.ts] localStorage not available for settings')
+  return current
 }
 
 export function clearAllData(): void {
