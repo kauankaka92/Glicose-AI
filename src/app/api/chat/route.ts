@@ -59,21 +59,34 @@ export async function POST(request: NextRequest) {
       /(\d{2,3})\s*(?:de\s*)?glicemia/i,
       /(\d{2,3})\s*mg(?:\/dl)?/i,
       /pra\s*(\d{2,3})\s*(?:de\s*)?glicose/i,
-      // Padrão: "antes do almoco: 183" ou "apos cafe: 200"
+      // Padrão: "antes do almoco: 183" ou "apos cafe: 200" - DOIS NUMEROS
       /(?:antes|depois|apos|pos|em jejum|jejum)\s+(?:do|da|de)?\s*(?:almoco|almoço|cafe|café|janta|jantar|refeicao|refeição)\s*[:\-]?\s*(\d{2,3})/i,
+      // Padrão: "apos cafe da manha: 324" - com "da" no meio
+      /(?:apos|depois)\s+(?:o|a|os|as)?\s*(?:cafe|café|almoco|almoço|janta|jantar)\s+(?:da|do|de)?\s*(manha|manhã|tarde|noite)?\s*[:\-]?\s*(\d{2,3})/i,
       // Padrão: número no final da frase após contexto
       /(?:ao\s+acordar|antes\s+do|depois\s+do|apos\s+o|em\s+jejum)\s+(?:.*?)(\d{2,3})\s*(?:mg|mg\/dl)?$/i,
       // Padrão simples: apenas número seguido de contexto
       /^(\d{2,3})\s+(?:ao\s+acordar|antes\s+|apos\s+|depois\s+|em\s+jejum|jejum)/i,
+      // PADRÃO EXTRA: qualquer numero de 3 digitos após 2 ou mais palavras
+      /\b(?:ao\s+acordar|antes\s+.*|apos\s+.*|depois\s+.*|em\s+jejum|jejum)\s*[:\-.]?\s*(\d{3})\b/i,
     ]
 
     let glucoseValue: number | null = null
     for (const pattern of glucosePatterns) {
       const match = message.match(pattern)
       if (match) {
-        glucoseValue = parseInt(match[1], 10)
+        glucoseValue = parseInt(match[1] || match[2], 10)
         console.log('[MOTOR DE DADOS] Glicose detectada:', glucoseValue, 'pattern:', pattern.toString())
         if (glucoseValue >= 20 && glucoseValue <= 600) break
+      }
+    }
+
+    // Fallback: procurar qualquer numero de 3 digitos isolado na frase
+    if (!glucoseValue) {
+      const anyNumberMatch = message.match(/\b(\d{3})\b\s*(?:ao|antes|apos|depois|jejum|manha|manhã|tarde|noite)/i)
+      if (anyNumberMatch) {
+        glucoseValue = parseInt(anyNumberMatch[1], 10)
+        console.log('[MOTOR DE DADOS] Glicose (fallback):', glucoseValue)
       }
     }
 
