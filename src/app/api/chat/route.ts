@@ -299,18 +299,28 @@ export async function POST(request: NextRequest) {
     const insulinPatterns = [
       /tomei\s*(\d+(?:\.\d+)?)\s*(?:unidades|u|ui)/i,
       /apliquei\s*(\d+(?:\.\d+)?)\s*(?:unidades|u|ui)/i,
+      /(\d+(?:\.\d+)?)\s*(?:unidades|u|ui)\s+(?:para\s+)?(?:esse|essa|o|a|correcao|correção|pos|apos|antes|pre)/i,
       /(\d+(?:\.\d+)?)\s*(?:unidades|u|ui)\s*(?:de\s*)?(?:insulina|correção|correao)/i,
       /insulina\s*(\d+(?:\.\d+)?)\s*(?:unidades|u)?/i,
+      // Padrão: "para esse lanche, 3 unidades" ou "para pos almoco: 3 unidades"
+      /(?:para\s+)?(?:esse|essa|o|a|pos|apos|antes|pre)\s+(?:almoco|almoço|lanche|cafe|café|janta|jantar)\s*[,:]?\s*(\d+(?:\.\d+)?)\s*(?:unidades|u|ui)/i,
     ]
+
+    console.log('[MOTOR DE DADOS] Buscando insulina explícita na mensagem:', message.substring(0, 200))
 
     for (const pattern of insulinPatterns) {
       const match = message.match(pattern)
+      console.log('[MOTOR DE DADOS] Testando pattern:', pattern.toString(), 'match:', match)
       if (match) {
-        explicitInsulin = parseFloat(match[1])
+        // Pega o primeiro grupo de captura (pode ser match[1] ou match[2] dependendo do padrão)
+        const captured = match[1] || match[2]
+        explicitInsulin = parseFloat(captured)
         console.log('[MOTOR DE DADOS] Insulina explícita detectada:', explicitInsulin, 'pattern:', pattern.toString())
         break
       }
     }
+
+    console.log('[MOTOR DE DADOS] Insulina explícita final:', explicitInsulin)
 
     // Dados consolidados para calculo (ultima glicose detectada)
     const lastGlucose = events.filter(e => e.type === 'glucose_event').pop()
