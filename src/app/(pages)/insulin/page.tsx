@@ -81,7 +81,7 @@ export default function InsulinPage() {
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
-    padding: '12px 14px',
+    padding: 'var(--spacing-md) var(--spacing-lg)',
     borderRadius: 'var(--radius-md)',
     border: '1px solid var(--color-border)',
     backgroundColor: 'var(--color-bg-secondary)',
@@ -97,7 +97,7 @@ export default function InsulinPage() {
     fontSize: 'var(--font-size-sm)',
     fontWeight: 500,
     color: 'var(--color-text-secondary)',
-    marginBottom: '6px',
+    marginBottom: 'var(--spacing-sm)',
   }
 
   const handleDelete = (id: string) => {
@@ -463,7 +463,7 @@ export default function InsulinPage() {
                   style={{
                     fontSize: 'var(--font-size-sm)',
                     color: 'var(--color-text-secondary)',
-                    marginBottom: '4px',
+                    marginBottom: 'var(--spacing-sm)',
                   }}
                 >
                   {formatDateTime(entry.timestamp)}
@@ -499,7 +499,7 @@ export default function InsulinPage() {
                 cursor: 'pointer',
                 color: 'var(--color-text-tertiary)',
                 fontSize: '20px',
-                padding: '8px',
+                padding: 'var(--spacing-md)',
                 opacity: 0.6,
                 transition: 'all var(--transition-fast)',
               }}

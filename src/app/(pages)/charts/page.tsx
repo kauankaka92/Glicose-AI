@@ -110,7 +110,7 @@ export default function ChartsPage() {
             key={range}
             onClick={() => setTimeRange(range)}
             style={{
-              padding: '8px 16px',
+              padding: 'var(--spacing-md) var(--spacing-lg)',
               borderRadius: 'var(--radius-md)',
               border: 'none',
               backgroundColor: timeRange === range ? 'var(--color-primary)' : 'transparent',
@@ -248,7 +248,7 @@ export default function ChartsPage() {
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
-                  marginBottom: '8px',
+                  marginBottom: 'var(--spacing-md)',
                 }}
               >
                 <span
@@ -280,7 +280,7 @@ export default function ChartsPage() {
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
-                  marginBottom: '8px',
+                  marginBottom: 'var(--spacing-md)',
                 }}
               >
                 <span
@@ -312,7 +312,7 @@ export default function ChartsPage() {
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
-                  marginBottom: '8px',
+                  marginBottom: 'var(--spacing-md)',
                 }}
               >
                 <span
@@ -371,7 +371,7 @@ export default function ChartsPage() {
               style={{
                 display: 'flex',
                 alignItems: 'flex-end',
-                gap: '4px',
+                gap: 'var(--spacing-sm)',
                 height: '220px',
                 padding: 'var(--spacing-md)',
                 overflowX: 'auto',

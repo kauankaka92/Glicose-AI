@@ -137,7 +137,7 @@ export default function FoodPage() {
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
-    padding: '12px 14px',
+    padding: 'var(--spacing-md) var(--spacing-lg)',
     borderRadius: 'var(--radius-md)',
     border: '1px solid var(--color-border)',
     backgroundColor: 'var(--color-bg-secondary)',
@@ -153,7 +153,7 @@ export default function FoodPage() {
     fontSize: 'var(--font-size-sm)',
     fontWeight: 500,
     color: 'var(--color-text-secondary)',
-    marginBottom: '6px',
+    marginBottom: 'var(--spacing-sm)',
   }
 
   return (
@@ -220,7 +220,7 @@ export default function FoodPage() {
               onChange={(e) => setMealType(e.target.value as MealType)}
               style={{
                 width: '100%',
-                padding: '12px 14px',
+                padding: 'var(--spacing-md) var(--spacing-lg)',
                 borderRadius: 'var(--radius-md)',
                 border: `1px solid var(--color-border)`,
                 backgroundColor: 'var(--color-bg-secondary)',

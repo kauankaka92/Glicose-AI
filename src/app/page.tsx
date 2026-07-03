@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, Button } from '@/components/UI'
-import { GlucoseIcon, AIIcon, DashboardIcon, TrendStableIcon } from '@/components/SVGIcons'
+import { SpriteIcon } from '@/components/icons/IconSystem'
 
 export default function Home() {
   const router = useRouter()
@@ -91,52 +91,53 @@ export default function Home() {
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: 'var(--spacing-lg)',
+          gap: 'var(--spacing-6)',
           maxWidth: '600px',
           marginBottom: 'var(--spacing-4xl)',
         }}
       >
         {[
-          { icon: GlucoseIcon, label: 'Registros' },
-          { icon: AIIcon, label: 'IA Chat' },
-          { icon: DashboardIcon, label: 'Gráficos' },
-        ].map((feature) => {
-          const IconComponent = feature.icon
-          return (
-            <Card
-              key={feature.label}
+          { icon: 'glucometer' as const, label: 'Registros' },
+          { icon: 'chatai' as const, label: 'IA Chat' },
+          { icon: 'dashboard' as const, label: 'Gráficos' },
+        ].map((feature) => (
+          <Card
+            key={feature.label}
+            style={{
+              textAlign: 'center',
+              background: 'var(--color-bg-secondary)',
+              border: '1px solid var(--color-border)',
+            }}
+          >
+            <div
               style={{
-                padding: 'var(--spacing-xl)',
-                textAlign: 'center',
-                background: 'var(--color-bg-secondary)',
-                border: '1px solid var(--color-border)',
+                marginBottom: 'var(--spacing-sm)',
+                color: 'var(--color-primary)',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
               }}
             >
-              <div
-                style={{
-                  marginBottom: 'var(--spacing-sm)',
-                  color: 'var(--color-primary)',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                }}
-              >
-                <IconComponent size={32} style={{ filter: 'drop-shadow(0 0 8px var(--color-primary-glow))' }} />
-              </div>
-              <div
-                style={{
-                  fontSize: 'var(--font-size-xs)',
-                  color: 'var(--color-text-secondary)',
-                  fontWeight: 600,
-                  letterSpacing: '0.02em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                {feature.label}
-              </div>
-            </Card>
-          )
-        })}
+              <SpriteIcon
+                name={feature.icon}
+                size={32}
+                aria-hidden="true"
+                style={{ filter: 'drop-shadow(0 0 8px var(--color-primary-glow))' }}
+              />
+            </div>
+            <div
+              style={{
+                fontSize: 'var(--font-size-xs)',
+                color: 'var(--color-text-secondary)',
+                fontWeight: 600,
+                letterSpacing: '0.02em',
+                textTransform: 'uppercase',
+              }}
+            >
+              {feature.label}
+            </div>
+          </Card>
+        ))}
       </div>
 
       {/* CTA Button */}
@@ -146,17 +147,17 @@ export default function Home() {
         onClick={() => router.push('/dashboard')}
         glow
         style={{
-          padding: '16px 48px',
+          padding: 'var(--spacing-lg) var(--spacing-3xl)',
           fontSize: 'var(--font-size-lg)',
           fontWeight: 600,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '8px',
+          gap: 'var(--spacing-md)',
         }}
       >
         Começar Agora
-        <TrendStableIcon size={20} style={{ transform: 'rotate(-45deg)' }} />
+        <SpriteIcon name="graphs" size={24} strokeWidth={2} aria-hidden="true" style={{ transform: 'rotate(-45deg)' }} />
       </Button>
 
       {/* Footer */}

@@ -18,23 +18,16 @@ export function Card({ children, title, className = '', style, interactive = fal
 
   return (
     <div
-      className={className}
+      className={`${className}${interactive ? ' card-interactive' : ''}`}
       style={{
         backgroundColor: 'var(--color-bg-elevated)',
         borderRadius: 'var(--radius-xl)',
-        padding: 'var(--spacing-xl)',
+        padding: 'var(--spacing-6)',
         boxShadow: 'var(--shadow-sm)',
         border: `1px solid var(--color-border-subtle)`,
         transition: 'all var(--transition-base)',
         position: 'relative',
         overflow: 'hidden',
-        ...(interactive ? {
-          cursor: 'pointer',
-          ':hover': {
-            boxShadow: 'var(--shadow-md)',
-            transform: 'translateY(-2px)',
-          }
-        } : {}),
         ...glowStyle,
         ...style,
       }}
@@ -44,7 +37,7 @@ export function Card({ children, title, className = '', style, interactive = fal
           style={{
             fontSize: 'var(--font-size-xs)',
             fontWeight: 600,
-            marginBottom: 'var(--spacing-lg)',
+            marginBottom: 'var(--spacing-6)',
             color: 'var(--color-text-secondary)',
             letterSpacing: 'var(--letter-spacing-wide)',
             textTransform: 'uppercase',
@@ -66,7 +59,7 @@ export function CardGrid({ children, className = '' }: { children: React.ReactNo
       style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: 'var(--spacing-lg)',
+        gap: 'var(--spacing-6)',
       }}
     >
       {children}
@@ -99,13 +92,13 @@ export function Button({
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '8px',
+    gap: 'var(--spacing-md)',
     fontWeight: 600,
     borderRadius: 'var(--radius-md)',
     transition: 'all var(--transition-base)',
     cursor: disabled || loading ? 'not-allowed' : 'pointer',
     opacity: disabled || loading ? 0.6 : 1,
-    letterSpacing: '-0.01em',
+    letterSpacing: 'var(--letter-spacing-tight)',
     position: 'relative',
     overflow: 'hidden',
   }
@@ -135,15 +128,15 @@ export function Button({
 
   const sizeStyles: Record<string, React.CSSProperties> = {
     sm: {
-      padding: '8px 14px',
+      padding: 'var(--spacing-md) var(--spacing-xl)',
       fontSize: 'var(--font-size-sm)',
     },
     md: {
-      padding: '10px 20px',
+      padding: 'var(--spacing-lg) var(--spacing-2xl)',
       fontSize: 'var(--font-size-base)',
     },
     lg: {
-      padding: '14px 28px',
+      padding: 'var(--spacing-xl) var(--spacing-3xl)',
       fontSize: 'var(--font-size-lg)',
     },
   }
@@ -214,8 +207,8 @@ export function Input({
             fontSize: 'var(--font-size-sm)',
             fontWeight: 500,
             color: 'var(--color-text-secondary)',
-            marginBottom: '6px',
-            letterSpacing: '-0.01em',
+            marginBottom: 'var(--spacing-sm)',
+            letterSpacing: 'var(--letter-spacing-tight)',
           }}
         >
           {label}
@@ -232,9 +225,14 @@ export function Input({
           <span
             style={{
               position: 'absolute',
-              left: '12px',
+              left: 'var(--spacing-md)',
               color: 'var(--color-text-tertiary)',
               pointerEvents: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '24px',
+              height: '24px',
             }}
           >
             {icon}
@@ -246,7 +244,7 @@ export function Input({
             rows={rows}
             style={{
               width: '100%',
-              padding: '12px 14px',
+              padding: 'var(--spacing-md) var(--spacing-lg)',
               backgroundColor: 'var(--color-bg-secondary)',
               border: `1px solid ${error ? 'var(--color-danger)' : 'var(--color-border)'}`,
               borderRadius: 'var(--radius-md)',
@@ -266,7 +264,7 @@ export function Input({
             className={className}
             style={{
               width: '100%',
-              padding: icon ? '12px 12px 12px 40px' : '12px 14px',
+              padding: icon ? 'var(--spacing-md) var(--spacing-lg) var(--spacing-md) var(--spacing-xl)' : 'var(--spacing-md) var(--spacing-lg)',
               backgroundColor: 'var(--color-bg-secondary)',
               border: `1px solid ${error ? 'var(--color-danger)' : 'var(--color-border)'}`,
               borderRadius: 'var(--radius-md)',
@@ -284,7 +282,7 @@ export function Input({
       {error && (
         <p
           style={{
-            marginTop: '6px',
+            marginTop: 'var(--spacing-sm)',
             fontSize: 'var(--font-size-sm)',
             color: 'var(--color-danger)',
           }}
@@ -295,7 +293,7 @@ export function Input({
       {hint && !error && (
         <p
           style={{
-            marginTop: '6px',
+            marginTop: 'var(--spacing-sm)',
             fontSize: 'var(--font-size-sm)',
             color: 'var(--color-text-tertiary)',
           }}
@@ -355,11 +353,11 @@ export function Badge({
 
   const sizeStyles: Record<string, React.CSSProperties> = {
     sm: {
-      padding: '4px 8px',
+      padding: 'var(--spacing-md) var(--spacing-xl)',
       fontSize: 'var(--font-size-xs)',
     },
     md: {
-      padding: '6px 10px',
+      padding: 'var(--spacing-sm) var(--spacing-md)',
       fontSize: 'var(--font-size-sm)',
     },
   }
@@ -376,7 +374,7 @@ export function Badge({
         justifyContent: 'center',
         borderRadius: 'var(--radius-full)',
         fontWeight: 600,
-        letterSpacing: '0.02em',
+        letterSpacing: 'var(--letter-spacing-wide)',
         transition: 'all var(--transition-base)',
         ...variantStyle,
         ...sizeStyle,
@@ -404,7 +402,7 @@ export function Stat({ value, label, trend, trendValue, formatFn }: StatProps) {
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '4px',
+        gap: 'var(--spacing-sm)',
       }}
     >
       <div
@@ -422,7 +420,7 @@ export function Stat({ value, label, trend, trendValue, formatFn }: StatProps) {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '6px',
+          gap: 'var(--spacing-md)',
         }}
       >
         <span
@@ -469,7 +467,7 @@ export function Section({ title, children, action, className = '', style }: Sect
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: 'var(--spacing-lg)',
+          marginBottom: 'var(--spacing-6)',
         }}
       >
         <h2
@@ -513,7 +511,7 @@ export function EmptyState({ icon = '◦', title, description, action }: EmptySt
       <div
         style={{
           fontSize: '48px',
-          marginBottom: 'var(--spacing-lg)',
+          marginBottom: 'var(--spacing-6)',
           opacity: 0.3,
         }}
       >
@@ -578,7 +576,7 @@ export function ProgressBar({
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: '8px',
+            marginBottom: 'var(--spacing-md)',
           }}
         >
           {label && (
@@ -745,7 +743,7 @@ export function Alert({ type, title, message, onClose, children, style }: AlertP
             style={{
               fontSize: 'var(--font-size-sm)',
               fontWeight: 600,
-              marginBottom: '4px',
+              marginBottom: 'var(--spacing-sm)',
             }}
           >
             {title}
@@ -771,7 +769,7 @@ export function Alert({ type, title, message, onClose, children, style }: AlertP
             cursor: 'pointer',
             color: 'currentColor',
             opacity: 0.6,
-            padding: '4px',
+            padding: 'var(--spacing-sm)',
             fontSize: '18px',
             lineHeight: 1,
           }}

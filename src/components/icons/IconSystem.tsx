@@ -39,6 +39,13 @@ export interface IconProps {
   role?: 'img' | 'presentation'
 }
 
+// =============================================================================
+// INVARIANT: Unified 24px Canvas
+// All icons enforce: width=24px, height=24px, strokeWidth=2px
+// =============================================================================
+const UNIFIED_CANVAS_SIZE = 24
+const UNIFIED_STROKE_WIDTH = 2
+
 interface IconCache {
   [key: string]: string
 }
@@ -65,7 +72,9 @@ function parseSVGContent(content: string, props: IconProps): React.ReactNode {
   const svgElement = doc.querySelector('svg')
   if (!svgElement) return null
 
-  const size = typeof props.size === 'number' ? `${props.size}px` : props.size
+  // Enforce unified canvas: 24px x 24px
+  const size = typeof props.size === 'number' ? `${props.size}px` : props.size || `${UNIFIED_CANVAS_SIZE}px`
+  const strokeWidth = props.strokeWidth ?? UNIFIED_STROKE_WIDTH
 
   // Extract inner content preserving all elements
   const innerHTML = svgElement.innerHTML
@@ -161,7 +170,7 @@ export const SpriteSheet = () => (
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
-    strokeWidth="1.75"
+    strokeWidth="2"
     strokeLinecap="round"
     strokeLinejoin="round"
     style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}
@@ -256,7 +265,7 @@ export const SpriteIcon: React.FC<SpriteIconProps> = ({
   name,
   size = 24,
   className = '',
-  strokeWidth,
+  strokeWidth = 2,
   style: customStyle,
   'aria-hidden': ariaHidden,
   'aria-label': ariaLabel,

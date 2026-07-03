@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Card, Button, Badge, Stat, Section, Container } from '@/components/UI'
-import { GlucoseIcon, TrendUpIcon, TrendDownIcon, TrendStableIcon, AIIcon, FoodIcon, InsulinIcon } from '@/components/SVGIcons'
+import { SpriteIcon } from '@/components/icons/IconSystem'
 import { getGlucoseEntries, getFoodEntries, getInsulinEntries } from '@/lib/storage'
 import {
   calculateGlucoseStats,
@@ -87,14 +87,14 @@ export default function Dashboard() {
       </div>
 
       {/* Hero - Glicose + Eating Score */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-lg)', marginBottom: 'var(--spacing-2xl)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-6)', marginBottom: 'var(--spacing-2xl)' }}>
         {/* Glicose Atual */}
-        <Card glow={status === 'normal' ? 'primary' : status === 'critical' ? 'accent' : 'none'} style={{ background: 'linear-gradient(135deg, var(--color-bg-elevated) 0%, var(--color-bg-secondary) 100%)', padding: 'var(--spacing-xl)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--spacing-lg)' }}>
+        <Card glow={status === 'normal' ? 'primary' : status === 'critical' ? 'accent' : 'none'} style={{ background: 'linear-gradient(135deg, var(--color-bg-elevated) 0%, var(--color-bg-secondary) 100%)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--spacing-6)' }}>
             <div>
               <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 'var(--spacing-sm)' }}>Glicose Atual</p>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
-                <span style={{ display: 'flex', alignItems: 'center', color: statusColor[status] }}><GlucoseIcon size={28} style={{ marginRight: '8px' }} /></span>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--spacing-md)' }}>
+                <span style={{ display: 'flex', alignItems: 'center', color: statusColor[status] }}><SpriteIcon name="glucometer" size={24} strokeWidth={2} aria-hidden="true" style={{ marginRight: 'var(--spacing-sm)' }} /></span>
                 <span style={{ fontSize: 'var(--font-size-5xl)', fontWeight: 700, color: statusColor[status], fontFamily: 'var(--font-display)', textShadow: statusGlow[status] }}>{currentGlucose}</span>
                 <span style={{ fontSize: 'var(--font-size-lg)', color: 'var(--color-text-secondary)' }}>mg/dL</span>
               </div>
@@ -102,8 +102,8 @@ export default function Dashboard() {
             <Badge variant={status === 'normal' ? 'success' : status === 'critical' ? 'danger' : 'warning'} glow>{statusLabel}</Badge>
           </div>
           {trend && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: 'var(--spacing-md)', backgroundColor: 'var(--color-bg-contrast)', borderRadius: 'var(--radius-md)' }}>
-              {trend.direction === 'up' ? <TrendUpIcon size={20} style={{ color: 'var(--color-warning)' }} /> : trend.direction === 'down' ? <TrendDownIcon size={20} style={{ color: 'var(--color-success)' }} /> : <TrendStableIcon size={20} style={{ color: 'var(--color-text-secondary)' }} />}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', padding: 'var(--spacing-md)', backgroundColor: 'var(--color-bg-contrast)', borderRadius: 'var(--radius-md)' }}>
+              {trend.direction === 'up' ? <SpriteIcon name="graphs" size={24} strokeWidth={2} aria-hidden="true" style={{ color: 'var(--color-warning)' }} /> : trend.direction === 'down' ? <SpriteIcon name="graphs" size={24} strokeWidth={2} aria-hidden="true" style={{ color: 'var(--color-success)' }} /> : <SpriteIcon name="graphs" size={24} strokeWidth={2} aria-hidden="true" style={{ color: 'var(--color-text-secondary)' }} />}
               <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
                 {trend.direction === 'up' ? 'Subindo' : trend.direction === 'down' ? 'Descendo' : 'Estável'}
                 {Math.abs(trend.value) > 0 && ` (${Math.abs(trend.value)} mg/dL)`}
@@ -113,9 +113,9 @@ export default function Dashboard() {
         </Card>
 
         {/* Eating Quality Score */}
-        <Card glow="accent" style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.1) 0%, rgba(59,130,246,0.08) 100%)', border: '1px solid rgba(139,92,246,0.2)', padding: 'var(--spacing-xl)' }}>
-          <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 'var(--spacing-lg)' }}>Qualidade da Alimentação</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
+        <Card glow="accent" style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.1) 0%, rgba(59,130,246,0.08) 100%)', border: '1px solid rgba(139,92,246,0.2)' }}>
+          <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 'var(--spacing-6)' }}>Qualidade da Alimentação</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-md)' }}>
             <div style={{ width: '80px', height: '80px', borderRadius: '16px', background: `linear-gradient(135deg, ${gradeColor[eatingScore.grade]} 0%, ${gradeColor[eatingScore.grade]}80 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: currentGradeGlow, transform: 'rotate(-8deg)' }}>
               <span style={{ fontSize: '48px', fontWeight: 800, color: '#fff', fontFamily: 'var(--font-display)', transform: 'rotate(8deg)' }}>{eatingScore.grade}</span>
             </div>
@@ -126,7 +126,7 @@ export default function Dashboard() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
             {eatingScore.factors.map((f: any, i: number) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--spacing-sm)', background: 'var(--color-bg-contrast)', borderRadius: 'var(--radius-sm)' }}>
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--spacing-md)', background: 'var(--color-bg-contrast)', borderRadius: 'var(--radius-sm)' }}>
                 <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)' }}>{f.name}</span>
                 <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, color: f.impact >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>{f.impact >= 0 ? '+' : ''}{f.impact}</span>
               </div>
@@ -136,18 +136,18 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-2xl)' }}>
-        <Card><Stat value={stats.average} label="Média" formatFn={(v: any) => Math.round(Number(v))} /></Card>
-        <Card><Stat value={stats.min ?? 0} label="Mínima" /></Card>
-        <Card><Stat value={stats.max ?? 0} label="Máxima" /></Card>
-        <Card><Stat value={variability.cv} label="Variação (CV)%" /></Card>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--spacing-4)', marginBottom: 'var(--spacing-2xl)' }}>
+        <Card style={{ padding: 'var(--spacing-6)' }}><Stat value={stats.average} label="Média" formatFn={(v: any) => Math.round(Number(v))} /></Card>
+        <Card style={{ padding: 'var(--spacing-6)' }}><Stat value={stats.min ?? 0} label="Mínima" /></Card>
+        <Card style={{ padding: 'var(--spacing-6)' }}><Stat value={stats.max ?? 0} label="Máxima" /></Card>
+        <Card style={{ padding: 'var(--spacing-6)' }}><Stat value={variability.cv} label="Variação (CV)%" /></Card>
       </div>
 
       {/* Nutrition + Variability */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-lg)', marginBottom: 'var(--spacing-2xl)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-6)', marginBottom: 'var(--spacing-2xl)' }}>
         {/* Nutrition */}
-        <Card style={{ padding: 'var(--spacing-xl)', background: 'linear-gradient(135deg, rgba(34,197,94,0.05) 0%, rgba(59,130,246,0.03) 100%)' }}>
-          <h2 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, fontFamily: 'var(--font-display)', marginBottom: 'var(--spacing-lg)' }}>Análise Nutricional (7 dias)</h2>
+        <Card style={{ padding: 'var(--spacing-6)', background: 'linear-gradient(135deg, rgba(34,197,94,0.05) 0%, rgba(59,130,246,0.03) 100%)' }}>
+          <h2 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, fontFamily: 'var(--font-display)', marginBottom: 'var(--spacing-6)' }}>Análise Nutricional (7 dias)</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
             <div style={{ padding: 'var(--spacing-md)', background: 'var(--color-bg-contrast)', borderRadius: 'var(--radius-md)' }}>
               <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)', marginBottom: 'var(--spacing-xs)' }}>Carboidratos</p>
@@ -182,8 +182,8 @@ export default function Dashboard() {
         </Card>
 
         {/* Variability + TIR */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
-          <Card style={{ padding: 'var(--spacing-xl)', flex: 1, background: 'linear-gradient(135deg, rgba(139,92,246,0.05) 0%, rgba(99,102,241,0.03) 100%)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
+          <Card style={{ padding: 'var(--spacing-6)', flex: 1, background: 'linear-gradient(135deg, rgba(139,92,246,0.05) 0%, rgba(99,102,241,0.03) 100%)' }}>
             <h2 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, fontFamily: 'var(--font-display)', marginBottom: 'var(--spacing-lg)' }}>Variabilidade Glicêmica</h2>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
@@ -199,7 +199,7 @@ export default function Dashboard() {
           </Card>
 
           {/* Time in Range */}
-          <Card style={{ padding: 'var(--spacing-xl)', background: 'linear-gradient(135deg, rgba(34,197,94,0.05) 0%, rgba(34,197,94,0.02) 100%)' }}>
+          <Card style={{ padding: 'var(--spacing-6)', background: 'linear-gradient(135deg, rgba(34,197,94,0.05) 0%, rgba(34,197,94,0.02) 100%)' }}>
             <h2 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, fontFamily: 'var(--font-display)', marginBottom: 'var(--spacing-md)' }}>Tempo na Faixa</h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-lg)' }}>
               <div style={{ position: 'relative', width: '100px', height: '100px' }}>
@@ -228,9 +228,9 @@ export default function Dashboard() {
 
       {/* Daily Patterns */}
       <Section title="Últimos 7 Dias">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 'var(--spacing-sm)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 'var(--spacing-4)' }}>
           {dailyPatterns.map((day, i) => (
-            <Card key={i} style={{ padding: 'var(--spacing-md)', textAlign: 'center', background: day.timeInRange >= 70 ? 'linear-gradient(180deg, rgba(34,197,94,0.1) 0%, transparent 100%)' : day.timeInRange >= 50 ? 'linear-gradient(180deg, rgba(251,191,36,0.1) 0%, transparent 100%)' : 'linear-gradient(180deg, rgba(239,68,68,0.1) 0%, transparent 100%)' }}>
+            <Card key={i} style={{ padding: 'var(--spacing-4)', textAlign: 'center', background: day.timeInRange >= 70 ? 'linear-gradient(180deg, rgba(34,197,94,0.1) 0%, transparent 100%)' : day.timeInRange >= 50 ? 'linear-gradient(180deg, rgba(251,191,36,0.1) 0%, transparent 100%)' : 'linear-gradient(180deg, rgba(239,68,68,0.1) 0%, transparent 100%)' }}>
               <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)', marginBottom: 'var(--spacing-xs)' }}>
                 {new Date(day.date).toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')}
               </p>
@@ -249,7 +249,7 @@ export default function Dashboard() {
       <Section title="Insight IA">
         <Card style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(59,130,246,0.05) 100%)', border: '1px solid rgba(139,92,246,0.15)' }}>
           <div style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
-            <AIIcon size={24} style={{ color: 'var(--color-primary)', filter: 'drop-shadow(0 0 8px var(--color-data-purple))', flexShrink: 0 }} />
+            <SpriteIcon name="chatai" size={24} aria-hidden="true" style={{ color: 'var(--color-primary)', filter: 'drop-shadow(0 0 8px var(--color-data-purple))', flexShrink: 0 }} />
             <p style={{ fontSize: 'var(--font-size-base)', color: 'var(--color-text-secondary)', lineHeight: 'var(--line-height-relaxed)' }}>{insight}</p>
           </div>
         </Card>
@@ -257,15 +257,15 @@ export default function Dashboard() {
 
       {/* Quick Actions */}
       <Section title="Ações Rápidas">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--spacing-md)' }}>
-          <Button variant="primary" glow onClick={() => window.location.href = '/glucose'} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-            <GlucoseIcon size={18} style={{ color: 'inherit' }} /> Glicose
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--spacing-4)' }}>
+          <Button variant="primary" glow onClick={() => window.location.href = '/glucose'} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--spacing-md)' }}>
+            <SpriteIcon name="glucometer" size={24} strokeWidth={2} aria-hidden="true" style={{ color: 'inherit' }} /> Glicose
           </Button>
-          <Button variant="secondary" onClick={() => window.location.href = '/insulin'} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-            <InsulinIcon size={18} style={{ color: 'inherit' }} /> Insulina
+          <Button variant="secondary" onClick={() => window.location.href = '/insulin'} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--spacing-md)' }}>
+            <SpriteIcon name="insulin" size={24} strokeWidth={2} aria-hidden="true" style={{ color: 'inherit' }} /> Insulina
           </Button>
-          <Button variant="secondary" onClick={() => window.location.href = '/food'} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-            <FoodIcon size={18} style={{ color: 'inherit' }} /> Refeição
+          <Button variant="secondary" onClick={() => window.location.href = '/food'} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--spacing-md)' }}>
+            <SpriteIcon name="food" size={24} strokeWidth={2} aria-hidden="true" style={{ color: 'inherit' }} /> Refeição
           </Button>
         </div>
       </Section>

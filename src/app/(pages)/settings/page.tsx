@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, Button, Alert, Container } from '@/components/UI'
 import { getSettings, saveSettings, exportData, importData, clearAllData } from '@/lib/storage'
 import { UserSettings } from '@/lib/types'
-import { SettingsIcon } from '@/components/SVGIcons'
+import { SpriteIcon } from '@/components/icons/IconSystem'
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<UserSettings>({
@@ -97,7 +97,7 @@ export default function SettingsPage() {
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
-    padding: '12px 14px',
+    padding: 'var(--spacing-md) var(--spacing-lg)',
     borderRadius: 'var(--radius-md)',
     border: '1px solid var(--color-border)',
     backgroundColor: 'var(--color-bg-secondary)',
@@ -113,8 +113,8 @@ export default function SettingsPage() {
     fontSize: 'var(--font-size-sm)',
     fontWeight: 500,
     color: 'var(--color-text-secondary)',
-    marginBottom: '6px',
-    letterSpacing: '-0.01em',
+    marginBottom: 'var(--spacing-sm)',
+    letterSpacing: 'var(--letter-spacing-tight)',
   }
 
   const hintStyle: React.CSSProperties = {
@@ -176,8 +176,8 @@ export default function SettingsPage() {
             alignItems: 'center',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <SettingsIcon size={24} style={{ color: 'var(--color-primary)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
+            <SpriteIcon name="settings" size={24} aria-hidden="true" style={{ color: 'var(--color-primary)' }} />
             Tratamento
           </div>
           {!saved && (
@@ -289,7 +289,7 @@ export default function SettingsPage() {
           Dados
         </h2>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-4)' }}>
           <Button
             variant="secondary"
             onClick={() => {
@@ -369,7 +369,7 @@ export default function SettingsPage() {
                   outline: 'none',
                 }}
               />
-              <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-md)' }}>
+              <div style={{ display: 'flex', gap: 'var(--spacing-4)', marginTop: 'var(--spacing-4)' }}>
                 <Button variant="primary" onClick={handleImport} style={{ flex: 1 }}>
                   Importar
                 </Button>

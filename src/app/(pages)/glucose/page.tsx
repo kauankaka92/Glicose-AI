@@ -124,7 +124,7 @@ export default function GlucosePage() {
               fontSize: 'var(--font-size-sm)',
               fontWeight: 500,
               color: 'var(--color-text-secondary)',
-              marginBottom: '6px',
+              marginBottom: 'var(--spacing-sm)',
             }}>
               Glicose (mg/dL)
             </label>
@@ -138,7 +138,7 @@ export default function GlucosePage() {
               required
               style={{
                 width: '100%',
-                padding: '12px 14px',
+                padding: 'var(--spacing-md) var(--spacing-lg)',
                 backgroundColor: 'var(--color-bg-secondary)',
                 border: '1px solid var(--color-border)',
                 borderRadius: 'var(--radius-md)',
@@ -164,7 +164,7 @@ export default function GlucosePage() {
               fontSize: 'var(--font-size-sm)',
               fontWeight: 500,
               color: 'var(--color-text-secondary)',
-              marginBottom: '6px',
+              marginBottom: 'var(--spacing-sm)',
             }}>
               Contexto
             </label>
@@ -173,7 +173,7 @@ export default function GlucosePage() {
               onChange={(e) => setContext(e.target.value as GlucoseContext)}
               style={{
                 width: '100%',
-                padding: '12px 14px',
+                padding: 'var(--spacing-md) var(--spacing-lg)',
                 backgroundColor: 'var(--color-bg-secondary)',
                 border: '1px solid var(--color-border)',
                 borderRadius: 'var(--radius-md)',
@@ -203,7 +203,7 @@ export default function GlucosePage() {
               fontSize: 'var(--font-size-sm)',
               fontWeight: 500,
               color: 'var(--color-text-secondary)',
-              marginBottom: '6px',
+              marginBottom: 'var(--spacing-sm)',
             }}>
               Observação (opcional)
             </label>
@@ -214,7 +214,7 @@ export default function GlucosePage() {
               placeholder="Ex: Após almoço"
               style={{
                 width: '100%',
-                padding: '12px 14px',
+                padding: 'var(--spacing-md) var(--spacing-lg)',
                 backgroundColor: 'var(--color-bg-secondary)',
                 border: '1px solid var(--color-border)',
                 borderRadius: 'var(--radius-md)',
@@ -256,7 +256,7 @@ export default function GlucosePage() {
           <Card key={entry.id} style={{ padding: 'var(--spacing-md)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-sm)' }}>
                   <span style={{
                     fontSize: 'var(--font-size-xl)',
                     fontWeight: 700,
@@ -279,7 +279,7 @@ export default function GlucosePage() {
               <button
                 onClick={() => handleDelete(entry.id)}
                 style={{
-                  padding: '6px 10px',
+                  padding: 'var(--spacing-sm) var(--spacing-md)',
                   backgroundColor: 'transparent',
                   border: '1px solid var(--color-border)',
                   borderRadius: 'var(--radius-sm)',

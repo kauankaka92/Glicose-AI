@@ -2,16 +2,26 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { DashboardIcon, AIIcon, GlucoseIcon, FoodIcon, InsulinIcon, ChatIcon, ChartIcon, SettingsIcon } from '@/components/SVGIcons'
+import { SpriteIcon } from './icons/IconSystem'
+
+const iconMap: Record<string, 'dashboard' | 'chatai' | 'glucometer' | 'food' | 'insulin' | 'graphs' | 'settings'> = {
+  '/dashboard': 'dashboard',
+  '/chat': 'chatai',
+  '/glucose': 'glucometer',
+  '/food': 'food',
+  '/insulin': 'insulin',
+  '/charts': 'graphs',
+  '/settings': 'settings',
+}
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
-  { href: '/chat', label: 'Chat IA', icon: ChatIcon },
-  { href: '/glucose', label: 'Glicose', icon: GlucoseIcon },
-  { href: '/food', label: 'Alimentação', icon: FoodIcon },
-  { href: '/insulin', label: 'Insulina', icon: InsulinIcon },
-  { href: '/charts', label: 'Gráficos', icon: ChartIcon },
-  { href: '/settings', label: 'Ajustes', icon: SettingsIcon },
+  { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
+  { href: '/chat', label: 'Chat IA', icon: 'chatai' },
+  { href: '/glucose', label: 'Glicose', icon: 'glucometer' },
+  { href: '/food', label: 'Alimentação', icon: 'food' },
+  { href: '/insulin', label: 'Insulina', icon: 'insulin' },
+  { href: '/charts', label: 'Gráficos', icon: 'graphs' },
+  { href: '/settings', label: 'Ajustes', icon: 'settings' },
 ] as const
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -30,7 +40,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           backdropFilter: 'blur(20px) saturate(140%)',
           WebkitBackdropFilter: 'blur(20px) saturate(140%)',
           borderTop: `1px solid var(--color-border)`,
-          padding: '12px 12px env(safe-area-inset-bottom)',
+          padding: 'var(--spacing-6) var(--spacing-4) env(safe-area-inset-bottom)',
           zIndex: 100,
           display: 'flex',
           justifyContent: 'space-around',
@@ -40,7 +50,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       >
         {navItems.map((item) => {
           const isActive = pathname === item.href
-          const IconComponent = item.icon
           return (
             <Link
               key={item.href}
@@ -49,26 +58,39 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '4px',
-                padding: '8px 10px',
+                gap: 'var(--spacing-sm)',
+                padding: 'var(--spacing-md) var(--spacing-md)',
                 borderRadius: 'var(--radius-md)',
                 backgroundColor: isActive ? 'var(--color-primary-light)' : 'transparent',
                 color: isActive ? 'var(--color-primary)' : 'var(--color-text-tertiary)',
                 transition: 'all var(--transition-base)',
                 textDecoration: 'none',
-                fontSize: '10px',
+                fontSize: 'var(--font-size-xs)',
                 fontWeight: 500,
-                letterSpacing: '0.02em',
-                minWidth: '56px',
+                letterSpacing: 'var(--letter-spacing-wide)',
+                minWidth: '64px',
               }}
             >
-              <IconComponent
-                size={20}
+              <div
                 style={{
-                  filter: isActive ? 'drop-shadow(0 0 8px var(--color-primary-glow))' : 'none',
-                  transition: 'all var(--transition-base)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '24px',
+                  height: '24px',
                 }}
-              />
+              >
+                <SpriteIcon
+                  name={item.icon}
+                  size={24}
+                  strokeWidth={2}
+                  aria-hidden="true"
+                  style={{
+                    filter: isActive ? 'drop-shadow(0 0 8px var(--color-primary-glow))' : 'none',
+                    transition: 'all var(--transition-base)',
+                  }}
+                />
+              </div>
               {item.label}
             </Link>
           )
@@ -86,7 +108,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       >
         <div
           style={{
-            padding: '20px 16px 100px',
+            padding: 'var(--spacing-lg) var(--spacing-4) var(--spacing-3xl)',
             maxWidth: '100%',
           }}
         >

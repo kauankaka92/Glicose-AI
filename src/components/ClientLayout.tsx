@@ -33,7 +33,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           backdropFilter: 'blur(20px) saturate(140%)',
           WebkitBackdropFilter: 'blur(20px) saturate(140%)',
           borderTop: `1px solid var(--color-border)`,
-          padding: '12px 12px env(safe-area-inset-bottom)',
+          padding: 'var(--spacing-md) var(--spacing-md) env(safe-area-inset-bottom)',
           zIndex: 100,
           display: 'flex',
           justifyContent: 'space-around',
@@ -51,27 +51,39 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '4px',
-                padding: '8px 10px',
+                gap: 'var(--spacing-sm)',
+                padding: 'var(--spacing-md) var(--spacing-md)',
                 borderRadius: 'var(--radius-md)',
                 backgroundColor: isActive ? 'var(--color-primary-light)' : 'transparent',
                 color: isActive ? 'var(--color-primary)' : 'var(--color-text-tertiary)',
                 transition: 'all var(--transition-base)',
                 textDecoration: 'none',
-                fontSize: '10px',
+                fontSize: 'var(--font-size-xs)',
                 fontWeight: 500,
-                letterSpacing: '0.02em',
-                minWidth: '56px',
+                letterSpacing: 'var(--letter-spacing-wide)',
+                minWidth: '64px',
               }}
             >
-              <SpriteIcon
-                name={item.icon}
-                size={20}
+              <div
                 style={{
-                  filter: isActive ? 'drop-shadow(0 0 8px var(--color-primary-glow))' : 'none',
-                  transition: 'all var(--transition-base)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '24px',
+                  height: '24px',
                 }}
-              />
+              >
+                <SpriteIcon
+                  name={item.icon}
+                  size={24}
+                  strokeWidth={2}
+                  aria-hidden="true"
+                  style={{
+                    filter: isActive ? 'drop-shadow(0 0 8px var(--color-primary-glow))' : 'none',
+                    transition: 'all var(--transition-base)',
+                  }}
+                />
+              </div>
               {item.label}
             </Link>
           )
@@ -89,7 +101,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       >
         <div
           style={{
-            padding: '20px 16px 100px',
+            padding: 'var(--spacing-lg) var(--spacing-4) var(--spacing-3xl)',
             maxWidth: '100%',
           }}
         >

@@ -31,7 +31,7 @@ export function SidebarNav() {
               className={`sidebar-nav__link ${item.active ? 'sidebar-nav__link--active' : ''}`}
               aria-current={item.active ? 'page' : undefined}
             >
-              <SpriteIcon name={item.icon} size={20} aria-hidden="true" />
+              <SpriteIcon name={item.icon} size={24} strokeWidth={2} aria-hidden="true" />
               <span className="sidebar-nav__label">{item.label}</span>
             </a>
           </li>
