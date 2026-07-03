@@ -13,10 +13,11 @@ export function GlucoseIcon({ size = 24, className, style }: SVGIconProps) {
       width={size}
       height={size}
       viewBox="0 0 24 24"
+      fill="currentColor"
       className={className}
       style={style}
     >
-      <path d="M14.4 22q-.875 0-1.675-.363T11.35 20.6l-5.8-6.75l1.3-.975q.5-.375 1.125-.4t1.15.325l1.375.875V4q0-.425.288-.713T11.5 3q.425 0 .713.288T12.5 4v9H14V8q0-.425.288-.713T15 7q.425 0 .713.288T16 8v5h1.5V9q0-.425.288-.713T18.5 8q.425 0 .713.288T19.5 9v4H21v-2q0-.425.288-.713T22 10q.425 0 .713.288T23 11v7q0 1.65-1.175 2.825T19 22h-4.6ZM4.5 10q-1.475 0-2.488-1.012T1 6.55q0-.85.338-1.475t1.587-2.05l1.575-1.8L6.075 3.05q1.275 1.475 1.6 2.075T8 6.55q0 1.425-1.025 2.438T4.5 10Z"/>
+      <path d="M12 2C9.5 2 7.5 4 7.5 6.5c0 1.5.7 2.8 1.8 3.7L5 15.5v.2c0 2.6 2.1 4.8 4.8 4.8h4.4c2.6 0 4.8-2.1 4.8-4.8v-.2l-4.3-5.3c1.1-.9 1.8-2.2 1.8-3.7C16.5 4 14.5 2 12 2zm0 1.5c1.7 0 3 1.3 3 3s-1.3 3-3 3-3-1.3-3-3 1.3-3 3-3zm-2.2 12l2.2-3 2.2 3H9.8zm2.2 3.5c-1.1 0-2.1-.6-2.6-1.5h5.2c-.5.9-1.5 1.5-2.6 1.5z"/>
     </svg>
   )
 }
@@ -28,10 +29,11 @@ export function FoodIcon({ size = 24, className, style }: SVGIconProps) {
       width={size}
       height={size}
       viewBox="0 0 24 24"
+      fill="currentColor"
       className={className}
       style={style}
     >
-      <path d="M18.06 23h1.66c.84 0 1.53-.65 1.63-1.47L23 5.05h-5V1h-1.97v4.05h-4.97l.3 2.34c1.71.47 3.31 1.32 4.27 2.26c1.44 1.42 2.43 2.89 2.43 5.29V23M1 22v-1h15.03v1c0 .54-.45 1-1.03 1H2c-.55 0-1-.46-1-1m15.03-7C16.03 7 1 7 1 15h15.03M1 17h15v2H1v-2Z"/>
+      <path d="M8 2v9c0 2.8-2.2 5-5 5S8 21 8 21s5-2.2 5-5V2H8zm11 0v6c0 2.2-1.8 4-4 4s-4-1.8-4-4V2h8zM6 6a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm11 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
     </svg>
   )
 }
@@ -43,10 +45,11 @@ export function InsulinIcon({ size = 24, className, style }: SVGIconProps) {
       width={size}
       height={size}
       viewBox="0 0 24 24"
+      fill="currentColor"
       className={className}
       style={style}
     >
-      <path d="M12 5.61L9.24 8.35l3.31 3.31l-1.06 1.06l-3.31-3.31l-1.77 1.77l3.31 3.31l-1.06 1.06l-3.31-3.31l-2 2A2 2 0 0 0 3 16.66l1 1.89l-2.25 2.29l1.41 1.41L5.45 20l1.89 1a2 2 0 0 0 1 .26a2 2 0 0 0 1.42-.59L18.39 12zm7.8 3.59l-1.79-1.8l1.42-1.41l1.41 1.41l1.41-1.41l-4.24-4.24l-1.41 1.41l1.41 1.42l-1.41 1.41l-1.8-1.79l-1.74-1.75l-1.41 1.42l1.03 1.03v.01l6.41 6.41h.01l1.03 1.03l1.42-1.41l-1.74-1.74h-.01z"/>
+      <path d="M12 2L9 5l2 2-2 2 2 2-2 2 3 3 2-2 2 2 2-2-2-2 2-2-2-2-2 2-2-2 2-2-2-2zm-1 13l-2 2-2-2 2-2 2 2zm-7 3v4h16v-2H4v-2H2z"/>
     </svg>
   )
 }
@@ -58,10 +61,11 @@ export function DashboardIcon({ size = 24, className, style }: SVGIconProps) {
       width={size}
       height={size}
       viewBox="0 0 24 24"
+      fill="currentColor"
       className={className}
       style={style}
     >
-      <path d="M15.21 2H8.75A6.76 6.76 0 0 0 2 8.75v6.5A6.76 6.76 0 0 0 8.75 22h6.5A6.76 6.76 0 0 0 22 15.25v-6.5A6.76 6.76 0 0 0 15.21 2M8.43 16.23a.8.8 0 1 1-1.6 0v-5.1a.8.8 0 0 1 1.6 0zm4.45 0a.8.8 0 1 1-1.6 0V7.78a.8.8 0 0 1 1.6 0zm4.21 0a.8.8 0 1 1-1.6 0V9.82a.8.8 0 0 1 1.6 0z"/>
+      <path d="M3 3h8v8H3V3zm0 10h8v8H3v-8zm10-10h8v5h-8V3zm0 7h8v11h-8V10z"/>
     </svg>
   )
 }
@@ -73,94 +77,11 @@ export function AIIcon({ size = 24, className, style }: SVGIconProps) {
       width={size}
       height={size}
       viewBox="0 0 24 24"
+      fill="currentColor"
       className={className}
       style={style}
     >
-      <path fillRule="evenodd" d="M384 128v256H128V128zm-148.25 64h-24.932l-47.334 128h22.493l8.936-25.023h56.662L260.32 320h23.847zm88.344 0h-22.402v128h22.402zm-101 21.475l22.315 63.858h-44.274zM405.335 320H448v42.667h-42.667zm-256 85.333H192V448h-42.667zm85.333 0h42.666V448h-42.666zM149.333 64H192v42.667h-42.667zM320 405.333h42.667V448H320zM234.667 64h42.666v42.667h-42.666zM320 64h42.667v42.667H320zm85.333 170.667H448v42.666h-42.667zM64 320h42.667v42.667H64zm341.333-170.667H448V192h-42.667zM64 234.667h42.667v42.666H64zm0-85.334h42.667V192H64z"/>
-    </svg>
-  )
-}
-
-export function ConfigIcon({ size = 24, className, style }: SVGIconProps) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      className={className}
-      style={style}
-    >
-      <mask id="configMask">
-        <g fill="none" stroke="#fff" strokeWidth="2" strokeLinejoin="round">
-          <path d="m12 2l-3 3h-4v4l-3 3l3 3v4h4l3 3l3-3h4v-4l3-3l-3-3V5h-4l-3-3Z"/>
-          <circle cx="12" cy="12" r="3"/>
-        </g>
-      </mask>
-      <rect width="24" height="24" fill="currentColor" mask="url(#configMask)"/>
-    </svg>
-  )
-}
-
-export function TrendUpIcon({ size = 24, className, style }: SVGIconProps) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      style={style}
-    >
-      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-      <polyline points="17 6 23 6 23 12" />
-    </svg>
-  )
-}
-
-export function TrendDownIcon({ size = 24, className, style }: SVGIconProps) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      style={style}
-    >
-      <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
-      <polyline points="17 18 23 18 23 12" />
-    </svg>
-  )
-}
-
-export function TrendStableIcon({ size = 24, className, style }: SVGIconProps) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      style={style}
-    >
-      <line x1="1" y1="18" x2="23" y2="18" />
-      <polyline points="17 14 23 18 17 22" />
+      <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
     </svg>
   )
 }
@@ -176,7 +97,7 @@ export function ChatIcon({ size = 24, className, style }: SVGIconProps) {
       className={className}
       style={style}
     >
-      <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+      <path d="M20 2H4C2.9 2 2 2.9 2 4v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
     </svg>
   )
 }
@@ -188,17 +109,11 @@ export function ChartIcon({ size = 24, className, style }: SVGIconProps) {
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      fill="currentColor"
       className={className}
       style={style}
     >
-      <line x1="18" y1="20" x2="18" y2="10" />
-      <line x1="12" y1="20" x2="12" y2="4" />
-      <line x1="6" y1="20" x2="6" y2="14" />
+      <path d="M5 9.2h3V19H5zM10.4 5.4h3V19h-3zm5.2 7.6h3V19h-3zM3 3h18v2H3zm1.5 4h15v2h-15z"/>
     </svg>
   )
 }
@@ -210,16 +125,59 @@ export function SettingsIcon({ size = 24, className, style }: SVGIconProps) {
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      fill="currentColor"
       className={className}
       style={style}
     >
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      <path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+    </svg>
+  )
+}
+
+export function TrendUpIcon({ size = 24, className, style }: SVGIconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      style={style}
+    >
+      <path d="M19 19H5V5h2v12h12zm-3.5-5.8L11 8.7l-2.6 2.6-1.4-1.4L11 5.8l5.9 5.9-1.4 1.5z"/>
+    </svg>
+  )
+}
+
+export function TrendDownIcon({ size = 24, className, style }: SVGIconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      style={style}
+    >
+      <path d="M19 19H5V5h2v12h12zm-7-3.8l4.5-4.5 1.4 1.4L13 16l-5.9-5.9 1.4-1.4 2.5 2.5V5h2v10.2z"/>
+    </svg>
+  )
+}
+
+export function TrendStableIcon({ size = 24, className, style }: SVGIconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      style={style}
+    >
+      <path d="M3 17h2v-2H3v2zm4 0h2v-2H7v2zm4 0h2v-2h-2v2zm4 0h2v-2h-2v2zm4 0h2v-2h-2v2zM5 21h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2zm0-16h14v14H5V5z"/>
     </svg>
   )
 }
