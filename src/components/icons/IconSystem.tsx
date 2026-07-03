@@ -265,6 +265,9 @@ export const SpriteIcon: React.FC<SpriteIconProps> = ({
   const iconId = `icon-${name}`
   const iconSize = typeof size === 'number' ? `${size}px` : size
 
+  // Normalize aria-hidden to boolean for React compatibility
+  const normalizedAriaHidden = typeof ariaHidden === 'string' ? ariaHidden === 'true' : ariaHidden
+
   return (
     <svg
       viewBox="0 0 24 24"
@@ -272,7 +275,7 @@ export const SpriteIcon: React.FC<SpriteIconProps> = ({
       height={iconSize}
       className={className}
       role={ariaLabel ? 'img' : role ?? 'presentation'}
-      aria-hidden={ariaHidden ?? !ariaLabel}
+      aria-hidden={normalizedAriaHidden ?? !ariaLabel}
       aria-label={ariaLabel}
       style={
         customStyle ?? (
