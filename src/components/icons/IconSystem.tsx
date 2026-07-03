@@ -247,7 +247,7 @@ interface SpriteIconProps {
   className?: string
   strokeWidth?: number
   style?: React.CSSProperties
-  'aria-hidden'?: boolean
+  'aria-hidden'?: boolean | string
   'aria-label'?: string
   role?: 'img' | 'presentation'
 }
