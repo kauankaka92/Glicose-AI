@@ -246,6 +246,7 @@ interface SpriteIconProps {
   size?: number | string
   className?: string
   strokeWidth?: number
+  style?: React.CSSProperties
   'aria-hidden'?: boolean
   'aria-label'?: string
   role?: 'img' | 'presentation'
@@ -256,6 +257,7 @@ export const SpriteIcon: React.FC<SpriteIconProps> = ({
   size = 24,
   className = '',
   strokeWidth,
+  style: customStyle,
   'aria-hidden': ariaHidden,
   'aria-label': ariaLabel,
   role,
@@ -273,9 +275,11 @@ export const SpriteIcon: React.FC<SpriteIconProps> = ({
       aria-hidden={ariaHidden ?? !ariaLabel}
       aria-label={ariaLabel}
       style={
-        strokeWidth
-          ? { stroke: 'currentColor', strokeWidth: strokeWidth.toString() } as React.CSSProperties
-          : { stroke: 'currentColor' } as React.CSSProperties
+        customStyle ?? (
+          strokeWidth
+            ? { stroke: 'currentColor', strokeWidth: strokeWidth.toString() } as React.CSSProperties
+            : { stroke: 'currentColor' } as React.CSSProperties
+        )
       }
     >
       <use href={`#${iconId}`} />
