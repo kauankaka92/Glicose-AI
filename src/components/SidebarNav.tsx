@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { SpriteIcon, type IconName } from './IconSystem'
+import { SpriteIcon, type IconName } from './icons/IconSystem'
 
 interface NavItem {
   href: string

@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { SpriteIcon } from './IconSystem'
+import { SpriteIcon } from './icons/IconSystem'
 
 interface KpiCardProps {
   title: string
