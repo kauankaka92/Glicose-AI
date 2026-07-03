@@ -501,7 +501,18 @@ export async function POST(request: NextRequest) {
     }
 
     if (!response) {
-      response = '✔ Mensagem recebida. Como posso ajudar?'
+      // Fallback contextual - NUNCA retornar mensagem genérica
+      if (text.includes('obrigad') || text.includes('valeu')) {
+        response = 'À disposição! Lembre-se de registrar suas glicoses antes das refeições.'
+      } else if (text.includes('como') || text.includes('ajuda') || text.includes('ajude')) {
+        response = 'Posso ajudar a registrar glicoses, alimentos e insulina. Exemplos: "Glicose: 180 mg/dL", "No almoço comi arroz e feijão", "Tomei 5U de insulina".'
+      } else if (text.includes('bom') || text.includes('boa') || text.includes('dia') || text.includes('noite') || text.includes('tarde')) {
+        response = 'Olá! Pronto para ajudar com seus registros. Como estão suas glicoses hoje?'
+      } else if (text.includes('perto') || text.includes('longe') || text.includes('evolução') || text.includes('evolucao')) {
+        response = 'Verifique seu dashboard para ver gráficos de evolução glicêmica e padrões dos últimos 7 dias.'
+      } else {
+        response = 'Entendido. Se precisar registrar glicose, alimentos ou insulina, é só me avisar com os valores.'
+      }
     }
 
     console.log('[MOTOR DE DADOS] Resposta:', response)

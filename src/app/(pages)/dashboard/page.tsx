@@ -249,7 +249,7 @@ export default function Dashboard() {
       <Section title="Insight IA">
         <Card style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(59,130,246,0.05) 100%)', border: '1px solid rgba(139,92,246,0.15)' }}>
           <div style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
-            <SpriteIcon name="chatai" size={24} aria-hidden="true" style={{ color: 'var(--color-primary)', filter: 'drop-shadow(0 0 8px var(--color-data-purple))', flexShrink: 0 }} />
+            <SpriteIcon name="chatai" size={24} strokeWidth={2} aria-hidden="true" style={{ color: 'var(--color-primary)', filter: 'drop-shadow(0 0 8px var(--color-data-purple))', flexShrink: 0 }} />
             <p style={{ fontSize: 'var(--font-size-base)', color: 'var(--color-text-secondary)', lineHeight: 'var(--line-height-relaxed)' }}>{insight}</p>
           </div>
         </Card>

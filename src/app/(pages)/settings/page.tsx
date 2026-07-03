@@ -177,7 +177,7 @@ export default function SettingsPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
-            <SpriteIcon name="settings" size={24} aria-hidden="true" style={{ color: 'var(--color-primary)' }} />
+            <SpriteIcon name="settings" size={24} strokeWidth={2} aria-hidden="true" style={{ color: 'var(--color-primary)' }} />
             Tratamento
           </div>
           {!saved && (

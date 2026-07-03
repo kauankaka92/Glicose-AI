@@ -121,6 +121,7 @@ export default function Home() {
               <SpriteIcon
                 name={feature.icon}
                 size={32}
+                strokeWidth={2}
                 aria-hidden="true"
                 style={{ filter: 'drop-shadow(0 0 8px var(--color-primary-glow))' }}
               />

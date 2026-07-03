@@ -26,7 +26,7 @@ export function KpiCard({
     <article className="kpi-card" role="region" aria-labelledby={`kpi-${icon}-label`}>
       <header className="kpi-card__header">
         <div className="kpi-card__icon">
-          <SpriteIcon name={icon} size={24} aria-hidden="true" />
+          <SpriteIcon name={icon} size={24} strokeWidth={2} aria-hidden="true" />
         </div>
         {trendValue && (
           <span className={`kpi-card__trend kpi-card__trend--${trend}`}>

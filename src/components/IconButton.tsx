@@ -46,6 +46,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
           <SpriteIcon
             name={icon}
             size={size === 'sm' ? 16 : size === 'lg' ? 24 : 20}
+            strokeWidth={2}
             aria-hidden="true"
           />
         )}
