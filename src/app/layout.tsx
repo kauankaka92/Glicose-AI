@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { SpriteSheet, SpriteIcon } from '@/components/IconSystem'
+import { SpriteSheet, SpriteIcon } from '@/components/icons/IconSystem'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' as const },
