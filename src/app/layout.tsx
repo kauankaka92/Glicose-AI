@@ -1,61 +1,116 @@
-import './globals.css'
-import type { Metadata, Viewport } from 'next'
-import { Inter, Space_Grotesk } from 'next/font/google'
+'use client'
 
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap',
-})
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { SpriteSheet, SpriteIcon } from '@/components/IconSystem'
 
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin'],
-  variable: '--font-space-grotesk',
-  display: 'swap',
-  weight: ['400', '500', '600', '700'],
-})
+const navItems = [
+  { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' as const },
+  { href: '/chat', label: 'Chat IA', icon: 'chatai' as const },
+  { href: '/glucose', label: 'Glicose', icon: 'glucometer' as const },
+  { href: '/food', label: 'Alimentação', icon: 'food' as const },
+  { href: '/insulin', label: 'Insulina', icon: 'insulin' as const },
+  { href: '/charts', label: 'Gráficos', icon: 'graphs' as const },
+  { href: '/settings', label: 'Ajustes', icon: 'settings' as const },
+] as const
 
-export const metadata: Metadata = {
-  title: 'Glicose AI',
-  description: 'Sistema de monitoramento de glicose com IA',
-  manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'Glicose AI',
-  },
-  other: {
-    'mobile-web-app-capable': 'yes',
-    'apple-mobile-web-app-status-bar-style': 'black-translucent',
-  },
-  formatDetection: {
-    telephone: false,
-  },
-}
+export default function Layout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
 
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  themeColor: '#00ff9d',
-}
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
-      <head>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-      </head>
-      <body className={`${inter.variable} ${spaceGrotesk.variable}`}>
-        <div className="grid-background" />
-        {children}
-      </body>
-    </html>
+    <>
+      {/* SVG Sprite Sheet - Loaded once, shared across all icons */}
+      <SpriteSheet />
+
+      {/* Mobile Bottom Nav - Using Sprite Icons */}
+      <nav
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: 'var(--glass-bg)',
+          backdropFilter: 'blur(20px) saturate(140%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(140%)',
+          borderTop: `1px solid var(--color-border)`,
+          padding: '12px 12px env(safe-area-inset-bottom)',
+          zIndex: 100,
+          display: 'flex',
+          justifyContent: 'space-around',
+          boxShadow: '0 -4px 24px rgba(0, 0, 0, 0.3)',
+        }}
+        className="mobile-nav"
+      >
+        {navItems.map((item) => {
+          const isActive = pathname === item.href
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '8px 10px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: isActive ? 'var(--color-primary-light)' : 'transparent',
+                color: isActive ? 'var(--color-primary)' : 'var(--color-text-tertiary)',
+                transition: 'all var(--transition-base)',
+                textDecoration: 'none',
+                fontSize: '10px',
+                fontWeight: 500,
+                letterSpacing: '0.02em',
+                minWidth: '56px',
+              }}
+            >
+              <SpriteIcon
+                name={item.icon}
+                size={20}
+                style={{
+                  filter: isActive ? 'drop-shadow(0 0 8px var(--color-primary-glow))' : 'none',
+                  transition: 'all var(--transition-base)',
+                }}
+                aria-hidden="true"
+              />
+              {item.label}
+            </Link>
+          )
+        })}
+      </nav>
+
+      {/* Main content - with padding for bottom nav */}
+      <main
+        style={{
+          minHeight: '100vh',
+          paddingBottom: 'env(safe-area-inset-bottom, 80px)',
+          position: 'relative',
+          zIndex: 1,
+        }}
+      >
+        <div
+          style={{
+            padding: '20px 16px 100px',
+            maxWidth: '100%',
+          }}
+        >
+          {children}
+        </div>
+      </main>
+
+      {/* Global styles for nav */}
+      <style jsx global>{`
+        .mobile-nav {
+          -webkit-backface-visibility: hidden;
+          backface-visibility: hidden;
+        }
+
+        @media (min-width: 768px) {
+          .mobile-nav {
+            display: none;
+          }
+        }
+      `}</style>
+    </>
   )
 }
